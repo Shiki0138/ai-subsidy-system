@@ -1,0 +1,94 @@
+name: Security Scan
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 毎日午前2時に実行
+  workflow_dispatch:
+  push:
+    branches: [main, develop]
+
+jobs:
+  vulnerability-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          
+      - name: Upload to GitHub Security Tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+          
+  dependency-check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [frontend, backend, ai-engine]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        working-directory: ./${{ matrix.component }}
+        run: npm ci
+        
+      - name: Run npm audit
+        working-directory: ./${{ matrix.component }}
+        run: npm audit --audit-level moderate
+        
+      - name: Run OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'ai-subsidy-${{ matrix.component }}'
+          path: './${{ matrix.component }}'
+          format: 'ALL'
+          
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          
+  docker-security-scan:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    strategy:
+      matrix:
+        component: [frontend, backend]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ matrix.component }}:scan ./${{ matrix.component }}
+          
+      - name: Run Trivy container scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ matrix.component }}:scan'
+          format: 'sarif'
+          output: '${{ matrix.component }}-container-results.sarif'
+          
+      - name: Upload container scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: '${{ matrix.component }}-container-results.sarif'

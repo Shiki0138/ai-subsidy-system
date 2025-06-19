@@ -1,0 +1,168 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-subsidy-backend
+  namespace: ai-subsidy
+  labels:
+    app: ai-subsidy-backend
+    version: v1
+    component: backend
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: ai-subsidy-backend
+  template:
+    metadata:
+      labels:
+        app: ai-subsidy-backend
+        version: v1
+        component: backend
+    spec:
+      serviceAccountName: ai-subsidy-backend
+      containers:
+      - name: backend
+        image: ghcr.io/ai-subsidy/backend:latest
+        ports:
+        - containerPort: 3001
+          name: http
+        - containerPort: 9090
+          name: metrics
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "3001"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: url
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-keys-secret
+              key: openai-key
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: jwt-secret
+        - name: ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: encryption-key
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3001
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: uploads
+          mountPath: /app/uploads
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: uploads
+        persistentVolumeClaim:
+          claimName: ai-subsidy-uploads
+      imagePullSecrets:
+      - name: registry-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-subsidy-backend-service
+  namespace: ai-subsidy
+  labels:
+    app: ai-subsidy-backend
+spec:
+  selector:
+    app: ai-subsidy-backend
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: 3001
+  - name: metrics
+    protocol: TCP
+    port: 9090
+    targetPort: 9090
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ai-subsidy-backend-hpa
+  namespace: ai-subsidy
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ai-subsidy-backend
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60

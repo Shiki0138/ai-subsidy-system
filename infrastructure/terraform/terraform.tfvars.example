@@ -1,0 +1,21 @@
+# AWS Configuration
+aws_region = "ap-northeast-1"
+environment = "production"
+
+# Database Configuration
+db_username = "ai_subsidy_admin"
+db_password = "your-secure-password-here"
+
+# Redis Configuration
+redis_auth_token = "your-redis-auth-token-here"
+
+# Project Configuration
+project_name = "ai-subsidy-system"
+
+# Additional Tags
+tags = {
+  Project     = "ai-subsidy-system"
+  Environment = "production"
+  ManagedBy   = "terraform"
+  Owner       = "team-d-infrastructure"
+}

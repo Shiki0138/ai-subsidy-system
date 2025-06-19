@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-subsidy
+  labels:
+    name: ai-subsidy
+    project: ai-subsidy-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    name: monitoring
+    project: ai-subsidy-system

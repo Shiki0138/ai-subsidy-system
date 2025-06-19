@@ -1,0 +1,57 @@
+import { HTMLAttributes, ReactNode } from 'react'
+import { cn } from '@/lib/utils'
+
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
+  children: ReactNode
+  padding?: 'none' | 'sm' | 'md' | 'lg'
+}
+
+interface CardHeaderProps extends HTMLAttributes<HTMLDivElement> {
+  children: ReactNode
+}
+
+interface CardBodyProps extends HTMLAttributes<HTMLDivElement> {
+  children: ReactNode
+}
+
+interface CardFooterProps extends HTMLAttributes<HTMLDivElement> {
+  children: ReactNode
+}
+
+const Card = ({ className, padding = 'md', children, ...props }: CardProps) => {
+  const paddingStyles = {
+    none: '',
+    sm: 'p-4',
+    md: 'p-6',
+    lg: 'p-8'
+  }
+  
+  return (
+    <div
+      className={cn('card-base', paddingStyles[padding], className)}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+}
+
+const CardHeader = ({ className, children, ...props }: CardHeaderProps) => (
+  <div className={cn('border-b border-gray-200 pb-4 mb-4', className)} {...props}>
+    {children}
+  </div>
+)
+
+const CardBody = ({ className, children, ...props }: CardBodyProps) => (
+  <div className={cn('', className)} {...props}>
+    {children}
+  </div>
+)
+
+const CardFooter = ({ className, children, ...props }: CardFooterProps) => (
+  <div className={cn('border-t border-gray-200 pt-4 mt-4', className)} {...props}>
+    {children}
+  </div>
+)
+
+export { Card, CardHeader, CardBody, CardFooter }

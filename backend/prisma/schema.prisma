@@ -1,0 +1,432 @@
+// AI補助金申請書自動作成システム - データベーススキーマ
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== ユーザー管理 =====
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  passwordHash      String
+  emailVerified     Boolean   @default(false)
+  emailVerifiedAt   DateTime?
+  
+  // プロフィール情報
+  companyName       String?
+  representativeName String?
+  businessType      String?   // 業種
+  foundedYear       Int?      // 設立年
+  employeeCount     Int?      // 従業員数
+  address           String?   // 所在地
+  phone             String?
+  website           String?
+  
+  // 権限・ステータス
+  role              UserRole  @default(USER)
+  status            UserStatus @default(ACTIVE)
+  
+  // タイムスタンプ
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  lastLoginAt       DateTime?
+  
+  // リレーション
+  applications      Application[]
+  aiUsageLogs       AiUsageLog[]
+  sessions          UserSession[]
+  uploadedFiles     UploadedFile[]
+  
+  @@map("users")
+  @@index([email])
+  @@index([status])
+}
+
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_sessions")
+}
+
+enum UserRole {
+  USER        // 一般ユーザー
+  ADMIN       // 管理者
+  SUPPORT     // サポート
+}
+
+enum UserStatus {
+  ACTIVE      // アクティブ
+  SUSPENDED   // 停止中
+  DELETED     // 削除済み
+}
+
+// ===== 補助金情報管理 =====
+
+model SubsidyProgram {
+  id              String    @id @default(cuid())
+  name            String    // 補助金名
+  officialName    String?   // 正式名称
+  category        String    // カテゴリ（持続化、再構築等）
+  organizationName String   // 実施機関名
+  
+  // 基本情報
+  description     String?   // 概要
+  purpose         String?   // 目的
+  targetBusiness  String?   // 対象事業者
+  
+  // 金額・条件
+  maxAmount       Int?      // 上限額（円）
+  subsidyRate     Float?    // 補助率（0.5 = 50%）
+  
+  // 期間
+  applicationStart DateTime? // 申請開始日
+  applicationEnd   DateTime? // 申請終了日
+  
+  // 要件・様式
+  requirements    Json?     // 申請要件（JSON）
+  documentFormat  Json?     // 申請書様式情報
+  evaluationCriteria Json?  // 評価基準
+  
+  // メタデータ
+  sourceUrl       String?   // 公募要領URL
+  lastUpdated     DateTime  @default(now())
+  isActive        Boolean   @default(true)
+  
+  // タイムスタンプ
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // リレーション
+  applications    Application[]
+  promptTemplates PromptTemplate[]
+  
+  @@map("subsidy_programs")
+  @@index([isActive])
+  @@index([applicationStart, applicationEnd])
+}
+
+// ===== 申請書管理 =====
+
+model Application {
+  id                String      @id @default(cuid())
+  userId            String
+  subsidyProgramId  String
+  
+  // 基本情報
+  title             String      // 申請書タイトル
+  status            ApplicationStatus @default(DRAFT)
+  progress          Int?        // 生成進捗（0-100）
+  
+  // 入力データ
+  inputData         Json?       // フォーム入力内容（全体）
+  businessPlan      Json?       // 事業計画データ（フォーム入力内容）
+  companyInfo       Json?       // 企業情報（ユーザープロフィール補完）
+  websiteData       Json?       // ウェブサイトから取得したデータ
+  
+  // AI生成結果
+  generatedContent  Json?       // AI生成された申請書内容
+  aiModel           String?     // 使用したAIモデル
+  promptUsed        String?     // 使用したプロンプト
+  generationTime    Int?        // 生成時間（ミリ秒）
+  estimatedScore    Float?      // 推定スコア
+  wordCount         Int?        // 文字数
+  
+  // エラー処理
+  errorMessage      String?     // エラーメッセージ
+  
+  // 編集・修正
+  editedContent     Json?       // ユーザーが編集した内容
+  revisionHistory   Json[]      // 修正履歴
+  
+  // PDF出力
+  pdfUrl            String?     // 生成されたPDFのURL
+  pdfGeneratedAt    DateTime?   // PDF生成日時
+  
+  // 提出・結果
+  submittedAt       DateTime?   // 提出日時
+  result            ApplicationResult? @default(PENDING)
+  resultNotes       String?     // 結果メモ
+  
+  // タイムスタンプ
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // リレーション
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subsidyProgram    SubsidyProgram @relation(fields: [subsidyProgramId], references: [id])
+  
+  @@map("applications")
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum ApplicationStatus {
+  DRAFT           // 下書き
+  GENERATING      // AI生成中
+  GENERATED       // 生成完了
+  EDITING         // 編集中
+  COMPLETED       // 完成
+  SUBMITTED       // 提出済み
+  FAILED          // 生成失敗
+}
+
+enum ApplicationResult {
+  PENDING         // 審査中
+  APPROVED        // 採択
+  REJECTED        // 不採択
+  CANCELLED       // 取り下げ
+}
+
+// ===== AI・プロンプト管理 =====
+
+model PromptTemplate {
+  id                String    @id @default(cuid())
+  subsidyProgramId  String?   // 特定の補助金用（nullの場合は汎用）
+  name              String    // プロンプト名
+  description       String?   // 説明
+  
+  // プロンプト内容
+  systemPrompt      String    // システムプロンプト
+  userPromptTemplate String   // ユーザープロンプトテンプレート
+  
+  // AI設定
+  model             String    // 対象AIモデル
+  temperature       Float     @default(0.3)
+  maxTokens         Int       @default(4000)
+  
+  // メタデータ
+  version           String    @default("1.0")
+  isActive          Boolean   @default(true)
+  priority          Int       @default(0) // 優先度（大きいほど優先）
+  
+  // 統計情報
+  usageCount        Int       @default(0)
+  successRate       Float?    // 成功率
+  avgGenerationTime Int?      // 平均生成時間（ミリ秒）
+  
+  // タイムスタンプ
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // リレーション
+  subsidyProgram    SubsidyProgram? @relation(fields: [subsidyProgramId], references: [id])
+  
+  @@map("prompt_templates")
+}
+
+model AiUsageLog {
+  id                String    @id @default(cuid())
+  userId            String?   // ユーザー（匿名の場合null）
+  applicationId     String?   // 関連する申請書
+  
+  // リクエスト情報
+  model             String    // 使用したAIモデル
+  promptLength      Int       // プロンプト文字数
+  inputTokens       Int?      // 入力トークン数
+  outputTokens      Int?      // 出力トークン数
+  
+  // レスポンス情報
+  responseTime      Int       // レスポンス時間（ミリ秒）
+  status            AiStatus  // 処理結果
+  errorMessage      String?   // エラーメッセージ
+  
+  // コスト計算
+  estimatedCost     Float?    // 推定コスト（USD）
+  
+  // プライバシー保護（ハッシュ化されたデータ）
+  inputHash         String?   // 入力のハッシュ値
+  outputHash        String?   // 出力のハッシュ値
+  
+  // タイムスタンプ
+  createdAt         DateTime  @default(now())
+  
+  // リレーション
+  user              User?     @relation(fields: [userId], references: [id])
+  
+  @@map("ai_usage_logs")
+  @@index([userId])
+  @@index([createdAt])
+}
+
+enum AiStatus {
+  SUCCESS         // 成功
+  ERROR           // エラー
+  TIMEOUT         // タイムアウト
+  RATE_LIMITED    // レート制限
+}
+
+// ===== ファイル管理 =====
+
+model FileUpload {
+  id                String    @id @default(cuid())
+  fileName          String    // ファイル名
+  originalName      String    // 元のファイル名
+  mimeType          String    // MIMEタイプ
+  fileSize          Int       // ファイルサイズ（バイト）
+  
+  // ストレージ情報
+  storageType       String    // ストレージタイプ（s3, minio等）
+  bucketName        String?   // バケット名
+  objectKey         String    // オブジェクトキー
+  url               String?   // アクセスURL
+  
+  // メタデータ
+  uploadedBy        String?   // アップロード者
+  purpose           String?   // 用途（profile_image, document等）
+  isTemporary       Boolean   @default(false)
+  expiresAt         DateTime? // 一時ファイルの場合の期限
+  
+  // セキュリティ
+  checksum          String?   // ファイルのチェックサム
+  isScanned         Boolean   @default(false) // ウイルススキャン済み
+  scanResult        String?   // スキャン結果
+  
+  // タイムスタンプ
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@map("file_uploads")
+  @@index([uploadedBy])
+  @@index([isTemporary, expiresAt])
+}
+
+// Enhanced file upload table for advanced file management
+model UploadedFile {
+  id                String    @id // Uses custom generated ID from fileUploadService
+  userId            String    // Owner of the file
+  
+  // File information
+  originalName      String    // Original filename from user
+  sanitizedName     String    // Sanitized filename
+  size              Int       // File size in bytes
+  mimeType          String    // MIME type
+  hash              String    // SHA256 hash for deduplication
+  
+  // Storage information
+  storagePath       String    // Path in storage backend
+  url               String    // Access URL
+  backend           String    // Storage backend (local, s3)
+  
+  // Enhanced metadata (JSON)
+  metadata          Json      // Extracted metadata (page count, dimensions, etc.)
+  scanResult        Json      // Virus scan results
+  
+  // Status and lifecycle
+  status            FileStatus @default(ACTIVE)
+  uploadedAt        DateTime  @default(now())
+  deletedAt         DateTime?
+  
+  // Usage tracking
+  downloadCount     Int       @default(0)
+  lastAccessedAt    DateTime?
+  
+  // Relations
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("uploaded_files")
+  @@index([userId])
+  @@index([status])
+  @@index([hash]) // For deduplication
+  @@index([uploadedAt])
+}
+
+enum FileStatus {
+  ACTIVE          // Active file
+  DELETED         // Soft deleted
+  QUARANTINED     // Quarantined due to security scan
+  PROCESSING      // Still being processed
+}
+
+// ===== システム管理 =====
+
+model SystemConfig {
+  key               String    @id
+  value             String
+  description       String?
+  dataType          String    @default("string") // string, number, boolean, json
+  isPublic          Boolean   @default(false)    // フロントエンドに公開するか
+  updatedAt         DateTime  @updatedAt
+  
+  @@map("system_configs")
+}
+
+model AuditLog {
+  id                String    @id @default(cuid())
+  userId            String?   // 実行者
+  action            String    // アクション
+  resourceType      String?   // リソースタイプ
+  resourceId        String?   // リソースID
+  details           Json?     // 詳細情報
+  ipAddress         String?   // IPアドレス
+  userAgent         String?   // ユーザーエージェント
+  createdAt         DateTime  @default(now())
+  
+  @@map("audit_logs")
+}
+
+// ===== 採択事例管理 =====
+
+model AdoptedCase {
+  id                  String    @id @default(cuid())
+  
+  // 補助金・企業情報
+  subsidyProgram      String    // 補助金プログラム名
+  companyName         String    // 企業名
+  projectTitle        String    // プロジェクト名・事業名
+  projectDescription  String    // 事業内容詳細
+  industry            String    // 業界・事業分野
+  companySize         String    // 企業規模
+  
+  // 金額情報
+  investmentAmount    Int       @default(0) // 投資総額
+  subsidyAmount       Int       @default(0) // 補助金額
+  
+  // 実施情報
+  implementationPeriod String?  // 実施期間
+  expectedResults     String?   // 期待される効果
+  
+  // 成果・学習データ（JSON形式）
+  achievements        String    // 実際の成果（JSON配列）
+  keySuccessFactors   String    // 成功要因（JSON配列）
+  lessonsLearned      String    // 学んだ教訓（JSON配列）
+  applicableScenarios String    // 適用可能シナリオ（JSON配列）
+  
+  // メタデータ
+  sourceUrl           String    // 出典URL
+  publishedDate       DateTime  // 公開日
+  confidenceScore     Float?    // データ信頼性スコア
+  
+  // 検索・分析用
+  extractionMethod    String?   // 抽出方法（scraping, manual, api）
+  tags                String[]  // タグ（検索用）
+  
+  // フラグ
+  isVerified          Boolean   @default(false) // 検証済み
+  isPublic            Boolean   @default(true)  // 公開可能
+  
+  // タイムスタンプ
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  @@map("adopted_cases")
+  @@index([industry])
+  @@index([subsidyProgram])
+  @@index([publishedDate])
+  @@index([companySize])
+  @@index([isVerified, isPublic])
+}
+
+// ===== インデックス =====
+// パフォーマンス最適化のためのインデックスは各モデル内で定義済み
