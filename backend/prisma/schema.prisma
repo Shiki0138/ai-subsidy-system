@@ -42,6 +42,20 @@ model User {
   sessions          UserSession[]
   uploadedFiles     UploadedFile[]
   
+  // 決済関連リレーション (チームA)
+  paymentSessions   PaymentSession[]
+  pdfUsageRights    PdfUsageRight[]
+  refunds           Refund[]
+  subscriptionPlans SubscriptionPlan[]
+  billingHistory    BillingHistory[]
+  
+  // 進捗管理リレーション (チームA Week 1)
+  projectProgress   ProjectProgress[]
+  
+  // 事業再構築補助金関連リレーション
+  eligibilityChecks SubsidyEligibilityCheck[]
+  applicationDrafts ApplicationDraft[]
+  
   @@map("users")
   @@index([email])
   @@index([status])
@@ -110,10 +124,62 @@ model SubsidyProgram {
   // リレーション
   applications    Application[]
   promptTemplates PromptTemplate[]
+  guidelines      SubsidyGuideline[]
+  documents       SubsidyDocument[]
   
   @@map("subsidy_programs")
   @@index([isActive])
   @@index([applicationStart, applicationEnd])
+}
+
+// ===== 補助金関連資料 =====
+
+model SubsidyDocument {
+  id                String      @id @default(cuid())
+  subsidyProgramId  String
+  
+  // ドキュメント情報
+  type              DocumentType // 資料の種類
+  title             String       // 資料タイトル
+  description       String?      // 資料の説明
+  content           String?      @db.Text // 資料内容（テキスト）
+  fileUrl           String?      // ファイルURL（PDF等）
+  fileSize          Int?         // ファイルサイズ（バイト）
+  mimeType          String?      // MIMEタイプ
+  
+  // バージョン管理
+  version           String       // バージョン番号（例：2024.1）
+  publishedDate     DateTime     // 公開日
+  validFrom         DateTime?    // 有効期間開始
+  validUntil        DateTime?    // 有効期間終了
+  
+  // メタデータ
+  sourceUrl         String?      // 元資料のURL
+  lastChecked       DateTime     @default(now()) // 最終確認日時
+  isLatest          Boolean      @default(true)  // 最新版かどうか
+  changeLog         String?      @db.Text // 変更履歴
+  
+  // タイムスタンプ
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  
+  // リレーション
+  subsidyProgram    SubsidyProgram @relation(fields: [subsidyProgramId], references: [id])
+  
+  @@map("subsidy_documents")
+  @@index([subsidyProgramId, type, isLatest])
+  @@index([publishedDate])
+}
+
+enum DocumentType {
+  OVERVIEW          // 概要説明資料
+  GUIDELINE         // 募集要項
+  APPLICATION_FORM  // 申請書様式
+  CHECKLIST         // チェックリスト
+  FAQ               // よくある質問
+  PRESENTATION      // 説明会資料
+  EXAMPLE           // 記入例
+  OTHER             // その他
 }
 
 // ===== 申請書管理 =====
@@ -165,11 +231,65 @@ model Application {
   // リレーション
   user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   subsidyProgram    SubsidyProgram @relation(fields: [subsidyProgramId], references: [id])
+  projectProgress   ProjectProgress[]
+  resultReports     ResultReport[]
   
   @@map("applications")
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+}
+
+// 申請資格チェック記録
+model SubsidyEligibilityCheck {
+  id              String    @id @default(cuid())
+  userId          String
+  subsidyType     String    // 補助金種別
+  checkData       Json      // チェック時の入力データ
+  result          Json      // チェック結果
+  eligible        Boolean   // 申請可能かどうか
+  createdAt       DateTime  @default(now())
+  
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("subsidy_eligibility_checks")
+  @@index([userId])
+  @@index([subsidyType])
+}
+
+// 認定支援機関
+model CertifiedSupportOrganization {
+  id                    String   @id @default(cuid())
+  name                  String
+  certificationNumber   String   @unique
+  location              String
+  specialties           String[] // 専門分野
+  contactInfo           Json     // 連絡先情報
+  representative        String   // 代表者名
+  isActive              Boolean  @default(true)
+  rating                Float?   // 評価
+  completedApplications Int      @default(0) // 完了申請数
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  @@map("certified_support_organizations")
+  @@index([location])
+  @@index([isActive])
+}
+
+// 申請書ドラフト保存
+model ApplicationDraft {
+  id          String   @id @default(cuid())
+  userId      String
+  subsidyType String   // 補助金種別
+  draftData   Json     // ドラフトデータ
+  currentStep Int?     // 現在のステップ
+  lastSaved   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("application_drafts")
+  @@index([userId, subsidyType])
 }
 
 enum ApplicationStatus {
@@ -428,5 +548,793 @@ model AdoptedCase {
   @@index([isVerified, isPublic])
 }
 
+// ===== 補助金募集要項データベース =====
+
+model SubsidyGuideline {
+  id                String    @id @default(cuid())
+  subsidyProgramId  String
+  version           String    // バージョン (例: "2024年度第1回")
+  
+  // 基本情報
+  title             String    // 募集要項タイトル
+  purpose           String    // 事業目的
+  overview          String    // 事業概要
+  
+  // 対象・要件
+  targetBusinessSize String[] // 対象事業規模
+  targetIndustries  String[]  // 対象業種
+  eligibilityRequirements Json // 申請要件詳細
+  
+  // 補助内容
+  minAmount         Int       // 最小補助額
+  maxAmount         Int       // 最大補助額
+  subsidyRate       Float     // 補助率
+  subsidyDetails    Json      // 補助対象経費等の詳細
+  
+  // 申請期間
+  applicationStart  DateTime  // 申請開始日
+  applicationEnd    DateTime  // 申請締切日
+  
+  // 評価基準
+  evaluationCriteria Json     // 評価基準詳細
+  scoringWeights    Json      // 評価項目の重み付け
+  
+  // 必要書類
+  requiredDocuments Json      // 必要書類リスト
+  documentTemplates Json?     // 書類テンプレート
+  
+  // 重要キーワード・フレーズ
+  importantKeywords String[]  // 重要キーワード
+  evaluationPhrases String[]  // 評価されるフレーズ
+  
+  // PDF・参考資料
+  guidelinePdfUrl   String?   // 募集要項PDFのURL
+  faqUrl            String?   // よくある質問URL
+  exampleUrl        String?   // 記載例URL
+  
+  // ステータス
+  status            GuidelineStatus @default(ACTIVE)
+  publishedAt       DateTime  // 公開日
+  
+  // タイムスタンプ
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // リレーション
+  subsidyProgram    SubsidyProgram @relation(fields: [subsidyProgramId], references: [id])
+  requirements      SubsidyRequirement[]
+  evaluationItems   EvaluationCriterion[]
+  successCases      SuccessCase[]
+  
+  @@map("subsidy_guidelines")
+  @@index([subsidyProgramId])
+  @@index([status])
+  @@index([applicationStart, applicationEnd])
+}
+
+enum GuidelineStatus {
+  DRAFT           // 下書き
+  ACTIVE          // アクティブ
+  EXPIRED         // 期限切れ
+  ARCHIVED        // アーカイブ
+}
+
+model SubsidyRequirement {
+  id               String    @id @default(cuid())
+  guidelineId      String
+  
+  requirement      String    // 要件内容
+  category         String    // カテゴリ（資格要件、事業要件等）
+  isMandatory      Boolean   // 必須要件か
+  checkMethod      String?   // 確認方法
+  relatedDocuments String[]  // 関連書類
+  
+  createdAt        DateTime  @default(now())
+  
+  guideline        SubsidyGuideline @relation(fields: [guidelineId], references: [id], onDelete: Cascade)
+  
+  @@map("subsidy_requirements")
+  @@index([guidelineId])
+}
+
+model EvaluationCriterion {
+  id               String    @id @default(cuid())
+  guidelineId      String
+  
+  criterionName    String    // 評価項目名
+  description      String    // 評価内容の説明
+  maxScore         Int       // 最大スコア
+  weight           Float     // 重み（0-1）
+  keywords         String[]  // この項目で重視されるキーワード
+  evaluationPoints Json      // 評価ポイント詳細
+  
+  createdAt        DateTime  @default(now())
+  
+  guideline        SubsidyGuideline @relation(fields: [guidelineId], references: [id], onDelete: Cascade)
+  
+  @@map("evaluation_criteria")
+  @@index([guidelineId])
+}
+
+model SuccessCase {
+  id                String    @id @default(cuid())
+  guidelineId      String
+  
+  // 基本情報
+  companyName       String    // 企業名（匿名化可）
+  projectTitle      String    // 事業タイトル
+  applicationYear   Int       // 申請年度
+  
+  // 申請内容
+  businessPlan      Json      // 事業計画概要
+  applicationContent Json     // 申請書の主要内容
+  keyPhrases        String[]  // 使用された重要フレーズ
+  
+  // 評価結果
+  evaluationScore   Float     // 評価スコア
+  evaluationComments Json?    // 評価コメント（利用可能な場合）
+  wasAdopted        Boolean   // 採択されたか
+  
+  // 成功要因分析
+  successFactors    String[]  // 成功要因
+  strongPoints      String[]  // 強みとされた点
+  improvementAreas  String[]  // 改善可能だった点
+  
+  // 学習データ
+  extractedPatterns Json      // 抽出されたパターン
+  confidenceScore   Float     // データの信頼性スコア
+  
+  createdAt         DateTime  @default(now())
+  
+  guideline         SubsidyGuideline @relation(fields: [guidelineId], references: [id], onDelete: Cascade)
+  
+  @@map("success_cases")
+  @@index([guidelineId])
+  @@index([wasAdopted])
+  @@index([evaluationScore])
+}
+
+// ===== 申請書分析履歴 =====
+
+model ApplicationAnalysis {
+  id                String    @id @default(cuid())
+  userId            String
+  subsidyProgramId  String
+  
+  // 分析データ
+  companyData       Json      // 企業データ
+  projectData       Json      // プロジェクトデータ
+  analysisResult    Json      // 分析結果
+  
+  // スコア
+  matchScore        Float     // マッチングスコア
+  
+  createdAt         DateTime  @default(now())
+  
+  @@map("application_analyses")
+  @@index([userId])
+  @@index([subsidyProgramId])
+}
+
+// ===== 申請書スコアリング =====
+
+model ApplicationScore {
+  id                String    @id @default(cuid())
+  applicationId     String    // Application ID
+  
+  // スコア詳細
+  totalScore        Float     // 総合スコア
+  scoreBreakdown    Json      // スコア内訳
+  suggestions       String[]  // 改善提案
+  
+  createdAt         DateTime  @default(now())
+  
+  @@map("application_scores")
+  @@index([applicationId])
+}
+
+// ===== 決済・課金システム (チームA担当) =====
+
+model PaymentSession {
+  id                String    @id @default(cuid())
+  sessionId         String    @unique // Stripe Session ID
+  userId            String    // User ID
+  pdfId             String?   // PDF ID (単発決済の場合)
+  
+  // 決済情報
+  plan              String    // pricing plan
+  amount            Int       // 金額（円）
+  currency          String    @default("jpy")
+  status            PaymentStatus @default(PENDING)
+  
+  // Stripe関連情報
+  paymentIntentId   String?   // Payment Intent ID
+  customerId        String?   // Stripe Customer ID
+  
+  // メタデータ
+  metadata          Json?     // 決済関連の追加情報
+  
+  // タイムスタンプ
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  expiresAt         DateTime  // セッション期限
+  completedAt       DateTime? // 決済完了日時
+  
+  // リレーション
+  user              User      @relation(fields: [userId], references: [id])
+  refunds           Refund[]
+  pdfUsageRights    PdfUsageRight[]
+  
+  @@map("payment_sessions")
+  @@index([userId])
+  @@index([sessionId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model PdfUsageRight {
+  id                String    @id @default(cuid())
+  userId            String    // User ID
+  pdfId             String    // PDF ID
+  sessionId         String    // Payment Session ID
+  
+  // 使用権詳細
+  validUntil        DateTime  // 有効期限
+  downloadLimit     Int       @default(3) // ダウンロード回数制限
+  downloadCount     Int       @default(0) // 実際のダウンロード回数
+  
+  // ステータス
+  status            UsageRightStatus @default(ACTIVE)
+  
+  // タイムスタンプ
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  lastUsedAt        DateTime?
+  
+  // リレーション
+  user              User      @relation(fields: [userId], references: [id])
+  paymentSession    PaymentSession @relation(fields: [sessionId], references: [sessionId])
+  
+  @@map("pdf_usage_rights")
+  @@index([userId])
+  @@index([pdfId])
+  @@index([sessionId])
+  @@index([validUntil])
+}
+
+model Refund {
+  id                String    @id @default(cuid())
+  refundId          String    @unique // Stripe Refund ID
+  sessionId         String    // Payment Session ID
+  userId            String    // User ID
+  
+  // 返金情報
+  amount            Int       // 返金額（円）
+  reason            String    // 返金理由
+  status            RefundStatus @default(PENDING)
+  autoApproved      Boolean   @default(false) // 24時間キャンセルなどの自動承認
+  
+  // 処理情報
+  processedAt       DateTime? // 処理完了日時
+  notes             String?   // 内部メモ
+  
+  // タイムスタンプ
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // リレーション
+  user              User      @relation(fields: [userId], references: [id])
+  paymentSession    PaymentSession @relation(fields: [sessionId], references: [sessionId])
+  
+  @@map("refunds")
+  @@index([userId])
+  @@index([sessionId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model SubscriptionPlan {
+  id                String    @id @default(cuid())
+  userId            String    // User ID
+  stripeSubscriptionId String @unique // Stripe Subscription ID
+  stripePriceId     String    // Stripe Price ID
+  
+  // プラン詳細
+  planType          String    // growth, scale
+  status            SubscriptionStatus @default(ACTIVE)
+  usageLimit        Int       // 月間利用回数制限
+  usageCount        Int       @default(0) // 今月の利用回数
+  
+  // 期間
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean  @default(false)
+  
+  // タイムスタンプ
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  canceledAt        DateTime?
+  
+  // リレーション
+  user              User      @relation(fields: [userId], references: [id])
+  
+  @@map("subscription_plans")
+  @@index([userId])
+  @@index([status])
+  @@index([currentPeriodEnd])
+}
+
+model BillingHistory {
+  id                String    @id @default(cuid())
+  userId            String    // User ID
+  
+  // 請求情報
+  type              BillingType // payment, refund, subscription
+  amount            Int       // 金額（円）
+  description       String    // 内容説明
+  
+  // 関連ID
+  sessionId         String?   // Payment Session ID
+  subscriptionId    String?   // Subscription ID
+  refundId          String?   // Refund ID
+  
+  // Stripe情報
+  stripeInvoiceId   String?   // Stripe Invoice ID
+  stripeChargeId    String?   // Stripe Charge ID
+  
+  // タイムスタンプ
+  createdAt         DateTime  @default(now())
+  
+  // リレーション
+  user              User      @relation(fields: [userId], references: [id])
+  
+  @@map("billing_history")
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// ===== 決済関連Enum =====
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  EXPIRED
+  CANCELED
+}
+
+enum UsageRightStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REJECTED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  UNPAID
+  INCOMPLETE
+}
+
+enum BillingType {
+  PAYMENT
+  REFUND
+  SUBSCRIPTION
+  SUBSCRIPTION_REFUND
+}
+
+// ===== リレーション追加 =====
+// User model に以下を追加する必要があります：
+// paymentSessions   PaymentSession[]
+// pdfUsageRights    PdfUsageRight[]
+// refunds           Refund[]
+// subscriptionPlans SubscriptionPlan[]
+// billingHistory    BillingHistory[]
+
 // ===== インデックス =====
 // パフォーマンス最適化のためのインデックスは各モデル内で定義済み
+
+// ===== 進捗管理システム (チームA Week 1実装) =====
+
+model ProjectProgress {
+  id              String   @id @default(cuid())
+  applicationId   String
+  userId          String
+  
+  // 基本情報
+  projectName     String
+  startDate       DateTime
+  endDate         DateTime
+  currentPhase    ProjectPhase
+  overallProgress Int      // 0-100%
+  
+  // ステータス
+  status          ProgressStatus @default(ACTIVE)
+  lastUpdated     DateTime @updatedAt
+  nextMilestone   DateTime?
+  
+  // 予算管理
+  totalBudget     Int      // 総予算（円）
+  spentAmount     Int      @default(0) // 支出済み金額
+  subsidyAmount   Int      // 補助金額
+  
+  // リスク管理
+  riskLevel       RiskLevel @default(LOW)
+  riskFactors     Json?    // リスク要因詳細
+  
+  // タイムスタンプ
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // リレーション
+  application     Application @relation(fields: [applicationId], references: [id])
+  user            User @relation(fields: [userId], references: [id])
+  milestones      Milestone[]
+  progressReports ProgressReport[]
+  tasks           ProjectTask[]
+  
+  @@map("project_progress")
+  @@index([userId])
+  @@index([applicationId])
+  @@index([status])
+}
+
+model Milestone {
+  id              String   @id @default(cuid())
+  projectId       String
+  
+  title           String
+  description     String   @db.Text
+  dueDate         DateTime
+  completedDate   DateTime?
+  status          MilestoneStatus @default(PENDING)
+  
+  // 成果物
+  deliverables    Json     // 成果物リスト
+  evidenceFiles   Evidence[]
+  
+  // 完了条件
+  completionCriteria String[] // 完了条件リスト
+  verificationMethod String?  // 検証方法
+  
+  // タイムスタンプ
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  project         ProjectProgress @relation(fields: [projectId], references: [id])
+  
+  @@map("milestones")
+  @@index([projectId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model ProgressReport {
+  id              String   @id @default(cuid())
+  projectId       String
+  
+  // レポート情報
+  reportDate      DateTime
+  reportType      ProgressReportType
+  title           String
+  summary         String   @db.Text
+  
+  // 進捗詳細
+  completedTasks  Json     // 完了タスクリスト
+  upcomingTasks   Json     // 今後のタスクリスト
+  issues          Json?    // 課題リスト
+  
+  // 数値指標
+  progressMetrics Json     // 進捗指標
+  kpiStatus       Json     // KPIステータス
+  
+  // ステータス
+  status          ReportStatus @default(DRAFT)
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  
+  // タイムスタンプ
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  project         ProjectProgress @relation(fields: [projectId], references: [id])
+  
+  @@map("progress_reports")
+  @@index([projectId])
+  @@index([reportDate])
+  @@index([status])
+}
+
+model ProjectTask {
+  id              String   @id @default(cuid())
+  projectId       String
+  
+  // タスク情報
+  title           String
+  description     String?
+  priority        TaskPriority @default(MEDIUM)
+  
+  // 担当者・期限
+  assignedTo      String?  // 担当者名
+  startDate       DateTime?
+  dueDate         DateTime
+  completedDate   DateTime?
+  
+  // ステータス
+  status          TaskStatus @default(TODO)
+  progress        Int      @default(0) // 0-100%
+  
+  // 依存関係
+  dependencies    String[] // 他タスクIDのリスト
+  blockedBy       String[] // ブロックしているタスクID
+  
+  // タイムスタンプ
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  project         ProjectProgress @relation(fields: [projectId], references: [id])
+  
+  @@map("project_tasks")
+  @@index([projectId])
+  @@index([status])
+  @@index([assignedTo])
+  @@index([dueDate])
+}
+
+model Evidence {
+  id              String   @id @default(cuid())
+  milestoneId     String
+  
+  // ファイル情報
+  fileName        String
+  fileUrl         String
+  fileType        String   // 画像、PDF、等
+  fileSize        Int      // バイト数
+  
+  // 証憑情報
+  description     String?
+  uploadedBy      String
+  verifiedBy      String?
+  verifiedAt      DateTime?
+  
+  // タイムスタンプ
+  createdAt       DateTime @default(now())
+  
+  milestone       Milestone @relation(fields: [milestoneId], references: [id])
+  
+  @@map("evidences")
+  @@index([milestoneId])
+}
+
+model ResultReport {
+  id              String   @id @default(cuid())
+  applicationId   String
+  
+  // 報告内容
+  reportType      ResultReportType
+  reportPeriod    String   // 例: "2024年度"
+  title           String
+  
+  // 成果内容
+  achievements    Json     // 達成事項
+  kpiResults      Json     // KPI達成結果
+  narrative       String   @db.Text // 成果説明文
+  
+  // 財務情報
+  actualExpenses  Json     // 実際の支出
+  budgetVariance  Json     // 予算差異
+  costEffectiveness Float? // 費用対効果
+  
+  // 証憑・添付資料
+  attachments     ReportAttachment[]
+  evidenceUrls    String[] // 証憑URLリスト
+  
+  // ステータス
+  status          ResultReportStatus @default(DRAFT)
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  approvedBy      String?
+  feedback        String?  @db.Text
+  
+  // タイムスタンプ
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  application     Application @relation(fields: [applicationId], references: [id])
+  
+  @@map("result_reports")
+  @@index([applicationId])
+  @@index([reportType])
+  @@index([status])
+}
+
+model ReportAttachment {
+  id              String   @id @default(cuid())
+  reportId        String
+  
+  // ファイル情報
+  fileName        String
+  fileUrl         String
+  fileType        String
+  fileSize        Int
+  
+  // 添付情報
+  attachmentType  String   // 領収書、写真、報告書等
+  description     String?
+  
+  // タイムスタンプ
+  createdAt       DateTime @default(now())
+  
+  report          ResultReport @relation(fields: [reportId], references: [id])
+  
+  @@map("report_attachments")
+  @@index([reportId])
+}
+
+model DocumentTemplate {
+  id              String   @id @default(cuid())
+  
+  documentType    String   // 見積書、事業計画書、etc
+  templateName    String
+  description     String?
+  
+  // テンプレート内容
+  structure       Json     // ドキュメント構造
+  defaultContent  Json     // デフォルト値
+  requiredFields  Json     // 必須項目
+  placeholders    Json?    // プレースホルダー定義
+  
+  // 設定
+  formatOptions   Json?    // フォーマットオプション
+  validationRules Json?    // バリデーションルール
+  
+  // メタデータ
+  version         String   @default("1.0")
+  isActive        Boolean  @default(true)
+  category        String?  // テンプレートカテゴリ
+  tags            String[] // 検索用タグ
+  
+  // 使用統計
+  usageCount      Int      @default(0)
+  lastUsedAt      DateTime?
+  
+  // タイムスタンプ
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  generatedDocuments GeneratedDocument[]
+  
+  @@map("document_templates")
+  @@index([documentType])
+  @@index([isActive])
+  @@index([category])
+}
+
+model GeneratedDocument {
+  id              String   @id @default(cuid())
+  templateId      String
+  userId          String
+  
+  // ドキュメント情報
+  title           String
+  content         Json     // 生成されたコンテンツ
+  metadata        Json?    // メタデータ
+  
+  // ファイル情報
+  fileUrl         String?  // 生成されたファイルURL
+  fileFormat      String   // PDF、Word、等
+  
+  // ステータス
+  status          DocumentStatus @default(DRAFT)
+  finalizedAt     DateTime?
+  
+  // タイムスタンプ
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  template        DocumentTemplate @relation(fields: [templateId], references: [id])
+  
+  @@map("generated_documents")
+  @@index([templateId])
+  @@index([userId])
+  @@index([status])
+}
+
+// ===== 進捗管理用Enum =====
+
+enum ProjectPhase {
+  PLANNING        // 計画中
+  IMPLEMENTING    // 実施中
+  MONITORING      // モニタリング
+  CLOSING         // 終了処理
+  COMPLETED       // 完了
+}
+
+enum ProgressStatus {
+  ACTIVE          // アクティブ
+  ON_HOLD         // 保留中
+  DELAYED         // 遅延
+  COMPLETED       // 完了
+  CANCELLED       // キャンセル
+}
+
+enum RiskLevel {
+  LOW             // 低
+  MEDIUM          // 中
+  HIGH            // 高
+  CRITICAL        // 重大
+}
+
+enum MilestoneStatus {
+  PENDING         // 未着手
+  IN_PROGRESS     // 進行中
+  COMPLETED       // 完了
+  DELAYED         // 遅延
+  CANCELLED       // キャンセル
+}
+
+enum ProgressReportType {
+  WEEKLY          // 週次
+  MONTHLY         // 月次
+  QUARTERLY       // 四半期
+  ANNUAL          // 年次
+  MILESTONE       // マイルストーン
+  AD_HOC          // 臨時
+}
+
+enum ReportStatus {
+  DRAFT           // 下書き
+  SUBMITTED       // 提出済み
+  UNDER_REVIEW    // レビュー中
+  APPROVED        // 承認済み
+  REJECTED        // 却下
+  REVISION_NEEDED // 修正要
+}
+
+enum TaskPriority {
+  LOW             // 低
+  MEDIUM          // 中
+  HIGH            // 高
+  URGENT          // 緊急
+}
+
+enum TaskStatus {
+  TODO            // 未着手
+  IN_PROGRESS     // 進行中
+  BLOCKED         // ブロック中
+  COMPLETED       // 完了
+  CANCELLED       // キャンセル
+}
+
+enum ResultReportType {
+  INTERIM         // 中間報告
+  FINAL           // 最終報告
+  FOLLOW_UP       // フォローアップ報告
+  ANNUAL          // 年次報告
+}
+
+enum ResultReportStatus {
+  DRAFT           // 下書き
+  SUBMITTED       // 提出済み
+  UNDER_REVIEW    // 審査中
+  APPROVED        // 承認済み
+  REJECTED        // 却下
+  REVISION_NEEDED // 修正要
+}
+
+enum DocumentStatus {
+  DRAFT           // 下書き
+  FINALIZED       // 確定
+  ARCHIVED        // アーカイブ
+}

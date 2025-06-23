@@ -53,13 +53,13 @@ export class AdvancedRateLimiter {
       client: this.redis,
       prefix: 'rl:user:',
       resetExpiryOnChange: true,
-      sendCommand: (...args: string[]) => this.redis.call(...args),
+      sendCommand: (...args: any[]) => this.redis.call(args[0], ...args.slice(1)),
     });
 
     return rateLimit({
       store: redisStore,
       windowMs: options.windowMs,
-      max: (req: AuthenticatedRequest) => {
+      max: (req: any) => {
         const userRole = req.user?.role || 'USER';
         
         // Apply role-based limits
@@ -101,7 +101,7 @@ export class AdvancedRateLimiter {
       client: this.redis,
       prefix: `rl:endpoint:${endpoint}:`,
       resetExpiryOnChange: true,
-      sendCommand: (...args: string[]) => this.redis.call(...args),
+      sendCommand: (...args: any[]) => this.redis.call(args[0], ...args.slice(1)),
     });
 
     return rateLimit({

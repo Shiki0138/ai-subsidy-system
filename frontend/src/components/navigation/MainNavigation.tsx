@@ -52,13 +52,21 @@ const mainNavigation: NavigationItem[] = [
     priority: 'primary'
   },
   {
+    name: 'かんたん申請',
+    href: '/quick-apply',
+    icon: SparklesIcon,
+    iconSolid: SparklesIcon,
+    description: 'ワンタップで補助金申請',
+    priority: 'primary',
+    highlight: true
+  },
+  {
     name: '新規作成',
     href: '/dashboard/applications/new',
     icon: PlusCircleIcon,
     iconSolid: PlusCircleIconSolid,
     description: '申請書を新規作成',
-    priority: 'primary',
-    highlight: true
+    priority: 'primary'
   },
   {
     name: '申請書管理',
@@ -77,6 +85,14 @@ const mainNavigation: NavigationItem[] = [
     description: '利用可能な補助金情報',
     priority: 'secondary',
     isDemo: true
+  },
+  {
+    name: '資料・募集要項',
+    href: '/subsidy-programs',
+    icon: DocumentTextIcon,
+    iconSolid: DocumentTextIconSolid,
+    description: '最新の募集要項・説明資料',
+    priority: 'secondary'
   },
   {
     name: 'プロフィール',

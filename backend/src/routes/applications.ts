@@ -947,6 +947,370 @@ router.post('/compare', authenticate, asyncHandler(async (req: Request, res: Res
 }));
 
 // PDF関連のルートを追加
+// ダッシュボード統計
+router.get('/stats/dashboard', conditionalAuth, asyncHandler(async (req: Request & { user?: any }, res: Response) => {
+  const userId = req.user?.id
+  if (!userId) {
+    throw new AuthenticationError('認証が必要です')
+  }
+
+  const [totalApplications, inProgressCount, submittedCount, approvedCount] = await Promise.all([
+    prisma.application.count({ where: { userId } }),
+    prisma.application.count({ where: { userId, status: 'DRAFT' } }),
+    prisma.application.count({ where: { userId, status: 'SUBMITTED' } }),
+    prisma.application.count({ where: { userId, status: 'APPROVED' } })
+  ])
+
+  const recentApplications = await prisma.application.findMany({
+    where: { userId },
+    take: 5,
+    orderBy: { updatedAt: 'desc' },
+    include: {
+      subsidyProgram: {
+        select: { name: true, category: true }
+      }
+    }
+  })
+
+  res.json({
+    success: true,
+    data: {
+      stats: {
+        total: totalApplications,
+        inProgress: inProgressCount,
+        submitted: submittedCount,
+        approved: approvedCount,
+        successRate: totalApplications > 0 ? Math.round((approvedCount / totalApplications) * 100) : 0
+      },
+      recentApplications: recentApplications.map(app => ({
+        id: app.id,
+        title: app.projectTitle,
+        status: app.status,
+        subsidyProgram: app.subsidyProgram.name,
+        category: app.subsidyProgram.category,
+        updatedAt: app.updatedAt
+      }))
+    }
+  })
+}))
+
+// 最近のアクティビティ
+router.get('/activity/recent', conditionalAuth, asyncHandler(async (req: Request & { user?: any }, res: Response) => {
+  const userId = req.user?.id
+  if (!userId) {
+    throw new AuthenticationError('認証が必要です')
+  }
+
+  const activities = await prisma.application.findMany({
+    where: { userId },
+    take: 20,
+    orderBy: { updatedAt: 'desc' },
+    select: {
+      id: true,
+      projectTitle: true,
+      status: true,
+      updatedAt: true,
+      subsidyProgram: {
+        select: { name: true }
+      }
+    }
+  })
+
+  res.json({
+    success: true,
+    data: activities.map(activity => ({
+      id: activity.id,
+      action: `申請書「${activity.projectTitle}」を更新`,
+      status: activity.status,
+      subsidyProgram: activity.subsidyProgram.name,
+      timestamp: activity.updatedAt
+    }))
+  })
+}))
+
+// 申請書の複製
+router.post('/:id/duplicate', conditionalAuth, asyncHandler(async (req: Request & { user?: any }, res: Response) => {
+  const { id } = req.params
+  const userId = req.user?.id
+
+  if (!userId) {
+    throw new AuthenticationError('認証が必要です')
+  }
+
+  const original = await prisma.application.findFirst({
+    where: { id, userId }
+  })
+
+  if (!original) {
+    throw new NotFoundError('申請書が見つかりません')
+  }
+
+  const duplicated = await prisma.application.create({
+    data: {
+      userId,
+      subsidyProgramId: original.subsidyProgramId,
+      projectTitle: `${original.projectTitle} (コピー)`,
+      projectDescription: original.projectDescription,
+      purpose: original.purpose,
+      targetMarket: original.targetMarket,
+      expectedEffects: original.expectedEffects,
+      budget: original.budget,
+      timeline: original.timeline,
+      challenges: original.challenges,
+      innovation: original.innovation,
+      status: 'DRAFT',
+      completionRate: 0
+    }
+  })
+
+  res.status(201).json({
+    success: true,
+    data: duplicated
+  })
+}))
+
+// AI生成履歴
+router.get('/:id/ai-history', conditionalAuth, asyncHandler(async (req: Request & { user?: any }, res: Response) => {
+  const { id } = req.params
+  const userId = req.user?.id
+
+  if (!userId) {
+    throw new AuthenticationError('認証が必要です')
+  }
+
+  const application = await prisma.application.findFirst({
+    where: { id, userId }
+  })
+
+  if (!application) {
+    throw new NotFoundError('申請書が見つかりません')
+  }
+
+  // TODO: AI生成履歴テーブルを作成して実装
+  // 現在はモックデータを返す
+  res.json({
+    success: true,
+    data: {
+      history: [
+        {
+          id: '1',
+          generatedAt: new Date(),
+          field: 'projectDescription',
+          originalText: application.projectDescription,
+          generatedText: application.projectDescription,
+          status: 'accepted'
+        }
+      ]
+    }
+  })
+}))
+
+// 申請書の提出
+router.post('/:id/submit', conditionalAuth, asyncHandler(async (req: Request & { user?: any }, res: Response) => {
+  const { id } = req.params
+  const userId = req.user?.id
+
+  if (!userId) {
+    throw new AuthenticationError('認証が必要です')
+  }
+
+  const application = await prisma.application.findFirst({
+    where: { id, userId }
+  })
+
+  if (!application) {
+    throw new NotFoundError('申請書が見つかりません')
+  }
+
+  if (application.status !== 'DRAFT') {
+    throw new ValidationError('下書き状態の申請書のみ提出できます')
+  }
+
+  const updated = await prisma.application.update({
+    where: { id },
+    data: {
+      status: 'SUBMITTED',
+      submittedAt: new Date()
+    }
+  })
+
+  res.json({
+    success: true,
+    data: updated,
+    message: '申請書を提出しました'
+  })
+}))
+
+// プロセスステータス確認（汎用的な非同期処理用）
+router.get('/processes/:processId/status', asyncHandler(async (req: Request, res: Response) => {
+  const { processId } = req.params
+  
+  // TODO: 実際のプロセス管理システムと連携
+  // 現在はモックレスポンス
+  res.json({
+    success: true,
+    data: {
+      processId,
+      status: 'completed',
+      progress: 100,
+      result: {
+        message: '処理が完了しました'
+      }
+    }
+  })
+}))
+
+// 一括削除
+router.post('/batch/delete', conditionalAuth, asyncHandler(async (req: Request & { user?: any }, res: Response) => {
+  const { applicationIds } = req.body
+  const userId = req.user?.id
+
+  if (!userId) {
+    throw new AuthenticationError('認証が必要です')
+  }
+
+  if (!Array.isArray(applicationIds) || applicationIds.length === 0) {
+    throw new ValidationError('削除する申請書IDを指定してください')
+  }
+
+  const deleteResults = await Promise.allSettled(
+    applicationIds.map(async (id) => {
+      const app = await prisma.application.findFirst({
+        where: { id, userId }
+      })
+      
+      if (!app) {
+        throw new Error('申請書が見つかりません')
+      }
+      
+      return prisma.application.delete({ where: { id } })
+    })
+  )
+
+  const errors = deleteResults
+    .map((result, index) => {
+      if (result.status === 'rejected') {
+        return { id: applicationIds[index], error: result.reason.message }
+      }
+      return null
+    })
+    .filter(Boolean)
+
+  res.json({
+    success: true,
+    data: {
+      deletedCount: deleteResults.filter(r => r.status === 'fulfilled').length,
+      errors
+    }
+  })
+}))
+
+// エクスポート
+router.post('/export', conditionalAuth, asyncHandler(async (req: Request & { user?: any }, res: Response) => {
+  const { applicationIds, format } = req.body
+  const userId = req.user?.id
+
+  if (!userId) {
+    throw new AuthenticationError('認証が必要です')
+  }
+
+  if (!['pdf', 'excel', 'csv'].includes(format)) {
+    throw new ValidationError('無効なフォーマットです')
+  }
+
+  // TODO: 実際のエクスポート処理を実装
+  // 現在はモックレスポンス
+  const fileName = `applications_export_${Date.now()}.${format}`
+  const downloadUrl = `/api/downloads/${fileName}`
+
+  res.json({
+    success: true,
+    data: {
+      downloadUrl,
+      fileName,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24時間後
+    }
+  })
+}))
+
+// コメント機能
+router.get('/:id/comments', conditionalAuth, asyncHandler(async (req: Request & { user?: any }, res: Response) => {
+  const { id } = req.params
+  const userId = req.user?.id
+
+  if (!userId) {
+    throw new AuthenticationError('認証が必要です')
+  }
+
+  const application = await prisma.application.findFirst({
+    where: { id, userId }
+  })
+
+  if (!application) {
+    throw new NotFoundError('申請書が見つかりません')
+  }
+
+  // TODO: コメントテーブルを作成して実装
+  // 現在はモックデータを返す
+  res.json({
+    success: true,
+    data: [
+      {
+        id: '1',
+        content: 'この部分をもう少し詳しく記載してください',
+        author: {
+          id: userId,
+          name: 'あなた',
+          role: 'user'
+        },
+        section: 'projectDescription',
+        isResolved: false,
+        createdAt: new Date().toISOString(),
+        replies: []
+      }
+    ]
+  })
+}))
+
+// スコア推定
+router.get('/:id/score', conditionalAuth, asyncHandler(async (req: Request & { user?: any }, res: Response) => {
+  const { id } = req.params
+  const userId = req.user?.id
+
+  if (!userId) {
+    throw new AuthenticationError('認証が必要です')
+  }
+
+  const application = await prisma.application.findFirst({
+    where: { id, userId },
+    include: { subsidyProgram: true }
+  })
+
+  if (!application) {
+    throw new NotFoundError('申請書が見つかりません')
+  }
+
+  // TODO: AI分析によるスコア推定を実装
+  // 現在はモックデータを返す
+  res.json({
+    success: true,
+    data: {
+      estimatedScore: 78,
+      maxScore: 100,
+      scoreBreakdown: {
+        innovation: { score: 18, maxScore: 25 },
+        feasibility: { score: 20, maxScore: 25 },
+        impact: { score: 22, maxScore: 25 },
+        budget: { score: 18, maxScore: 25 }
+      },
+      recommendations: [
+        '新規性・独自性の記述をより具体的にすることで、イノベーション項目のスコアが向上する可能性があります',
+        '期待される効果に定量的な指標を追加することで、インパクト項目のスコアが向上する可能性があります'
+      ]
+    }
+  })
+}))
+
 router.use('/', pdfRoutes)
 
 export default router

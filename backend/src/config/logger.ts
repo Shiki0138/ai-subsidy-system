@@ -21,8 +21,9 @@ const logFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
   winston.format.errors({ stack: true }),
   winston.format.json(),
-  winston.format.printf(({ timestamp, level, message, stack, ...meta }) => {
-    const log = {
+  winston.format.printf((info: any) => {
+    const { timestamp, level, message, stack, ...meta } = info;
+    const log: any = {
       timestamp,
       level,
       message,
@@ -30,7 +31,7 @@ const logFormat = winston.format.combine(
     };
     
     if (stack) {
-      log.stack = stack;
+      (log as any).stack = stack;
     }
     
     return JSON.stringify(log);
@@ -49,7 +50,8 @@ const createLogger = () => {
       format: winston.format.combine(
         winston.format.colorize(),
         winston.format.simple(),
-        winston.format.printf(({ timestamp, level, message, ...meta }) => {
+        winston.format.printf((info: any) => {
+          const { timestamp, level, message, ...meta } = info;
           const metaStr = Object.keys(meta).length > 0 ? `\n${JSON.stringify(meta, null, 2)}` : '';
           return `${timestamp} [${level}]: ${message}${metaStr}`;
         })
@@ -94,15 +96,7 @@ const createLogger = () => {
         maxSize: '20m',
         maxFiles: '365d',
         level: 'warn',
-        format: logFormat,
-        // セキュリティ関連のログのみフィルタリング
-        filter: (info) => {
-          return info.type === 'security' || 
-                 info.message?.includes('authentication') ||
-                 info.message?.includes('authorization') ||
-                 info.message?.includes('login') ||
-                 info.message?.includes('access denied');
-        }
+        format: logFormat
       })
     );
   }

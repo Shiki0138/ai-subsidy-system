@@ -84,10 +84,19 @@ export class SubsidyAnalysisEngine {
       const subsidyProgram = await this.prisma.subsidyProgram.findUnique({
         where: { id: subsidyProgramId },
         include: {
-          guidelines: { take: 1, orderBy: { createdAt: 'desc' } },
-          requirements: true,
-          evaluationCriteria: true,
-          successCases: { take: 10, orderBy: { evaluationScore: 'desc' } }
+          guidelines: { 
+            take: 1, 
+            orderBy: { createdAt: 'desc' },
+            include: {
+              requirements: true,
+              evaluationItems: true,
+              successCases: { 
+                take: 10, 
+                orderBy: { evaluationScore: 'desc' },
+                where: { wasAdopted: true }
+              }
+            }
+          }
         }
       });
 
@@ -95,21 +104,27 @@ export class SubsidyAnalysisEngine {
         throw new Error('補助金プログラムが見つかりません');
       }
 
+      const guideline = subsidyProgram.guidelines[0];
+      if (!guideline) {
+        throw new Error('募集要項が見つかりません');
+      }
+
       // 1. 適格性チェック
-      const eligibility = await this.checkEligibility(subsidyProgram, companyProfile);
+      const eligibility = await this.checkEligibility(guideline, companyProfile);
 
       // 2. 成功事例分析
-      const successPatterns = await this.analyzeSuccessPatterns(subsidyProgram.successCases);
+      const successPatterns = await this.analyzeSuccessPatterns(guideline.successCases);
 
       // 3. キーワード分析
       const keywordAnalysis = await this.analyzeKeywords(
-        subsidyProgram,
+        guideline,
         projectPlan,
         successPatterns.keywords
       );
 
       // 4. 内容最適化
       const optimizedContent = await this.optimizeContent(
+        guideline,
         subsidyProgram,
         companyProfile,
         projectPlan,
@@ -126,6 +141,7 @@ export class SubsidyAnalysisEngine {
 
       // 6. 改善提案生成
       const recommendations = await this.generateRecommendations(
+        guideline,
         subsidyProgram,
         companyProfile,
         projectPlan,
@@ -150,18 +166,18 @@ export class SubsidyAnalysisEngine {
    * 適格性チェック
    */
   private async checkEligibility(
-    subsidyProgram: any,
+    guideline: any,
     companyProfile: CompanyProfile
   ): Promise<AnalysisResult['eligibility']> {
-    const requirements = subsidyProgram.requirements;
+    const requirements = guideline.requirements;
     const missingRequirements: string[] = [];
     const reasons: string[] = [];
 
     // 事業規模チェック
-    if (subsidyProgram.targetBusinessSize?.length > 0) {
+    if (guideline.targetBusinessSize?.length > 0) {
       const sizeMatch = this.checkBusinessSize(
         companyProfile.employeeCount,
-        subsidyProgram.targetBusinessSize
+        guideline.targetBusinessSize
       );
       if (!sizeMatch) {
         missingRequirements.push('事業規模が対象外です');
@@ -169,8 +185,8 @@ export class SubsidyAnalysisEngine {
     }
 
     // 業種チェック
-    if (subsidyProgram.targetIndustries?.length > 0) {
-      const industryMatch = subsidyProgram.targetIndustries.includes(companyProfile.industry);
+    if (guideline.targetIndustries?.length > 0) {
+      const industryMatch = guideline.targetIndustries.includes(companyProfile.industry);
       if (!industryMatch) {
         missingRequirements.push('業種が対象外です');
       }
@@ -240,12 +256,11 @@ export class SubsidyAnalysisEngine {
    * キーワード分析
    */
   private async analyzeKeywords(
-    subsidyProgram: any,
+    guideline: any,
     projectPlan: ProjectPlan,
     successKeywords: string[]
   ): Promise<AnalysisResult['keywordAnalysis']> {
-    const guideline = subsidyProgram.guidelines[0];
-    const evaluationCriteria = subsidyProgram.evaluationCriteria;
+    const evaluationCriteria = guideline.evaluationItems;
 
     // 重要キーワードの抽出
     const importantKeywords = new Set<string>();
@@ -287,16 +302,17 @@ export class SubsidyAnalysisEngine {
    * 内容最適化
    */
   private async optimizeContent(
+    guideline: any,
     subsidyProgram: any,
     companyProfile: CompanyProfile,
     projectPlan: ProjectPlan,
     successPatterns: any,
     keywordAnalysis: any
   ): Promise<AnalysisResult['generatedContent']> {
-    const guideline = subsidyProgram.guidelines[0];
     
     // GPT-4による最適化
     const optimizationPrompt = this.createOptimizationPrompt(
+      guideline,
       subsidyProgram,
       companyProfile,
       projectPlan,
@@ -411,6 +427,7 @@ export class SubsidyAnalysisEngine {
    * 改善提案生成
    */
   private async generateRecommendations(
+    guideline: any,
     subsidyProgram: any,
     companyProfile: CompanyProfile,
     projectPlan: ProjectPlan,
@@ -449,7 +466,7 @@ export class SubsidyAnalysisEngine {
         `以下のキーワードを自然に含めてください: ${keywordAnalysis.suggestedKeywords.slice(0, 5).join(', ')}`
       );
     }
-    if (projectPlan.budget < subsidyProgram.minAmount) {
+    if (projectPlan.budget < guideline.minAmount) {
       improvements.push('事業規模を拡大し、最小補助額以上の計画にしてください');
     }
     improvements.push('具体的な数値目標（売上向上率、コスト削減率等）を明記してください');
@@ -499,6 +516,7 @@ export class SubsidyAnalysisEngine {
   }
 
   private createOptimizationPrompt(
+    guideline: any,
     subsidyProgram: any,
     companyProfile: CompanyProfile,
     projectPlan: ProjectPlan,
@@ -507,7 +525,7 @@ export class SubsidyAnalysisEngine {
   ): string {
     return `
 補助金名: ${subsidyProgram.name}
-募集要項の目的: ${subsidyProgram.guidelines[0]?.purpose || ''}
+募集要項の目的: ${guideline.purpose || ''}
 
 企業情報:
 - 企業名: ${companyProfile.companyName}

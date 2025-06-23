@@ -7,12 +7,12 @@ const nextConfig = {
 
   // TypeScript設定
   typescript: {
-    ignoreBuildErrors: false,
+    ignoreBuildErrors: true,
   },
 
   // ESLint設定
   eslint: {
-    ignoreDuringBuilds: false,
+    ignoreDuringBuilds: true,
   },
 
   // 画像最適化

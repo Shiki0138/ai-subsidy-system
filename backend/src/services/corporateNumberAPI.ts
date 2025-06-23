@@ -40,6 +40,21 @@ interface CorporateNumberResponse {
   corporations: CorporateNumberSearchResult[];
 }
 
+interface ChangeHistory {
+  date: string;
+  type: 'name' | 'address' | 'close' | 'successor';
+  before?: string;
+  after?: string;
+  details?: string;
+}
+
+interface RelatedCompany {
+  corporateNumber: string;
+  name: string;
+  relation: 'parent' | 'subsidiary' | 'affiliate' | 'successor' | 'predecessor';
+  details?: string;
+}
+
 interface EnhancedCompanyInfo {
   corporateNumber: string;
   companyName: string;
@@ -69,6 +84,17 @@ interface EnhancedCompanyInfo {
     employeeCount?: number;
     capitalAmount?: number;
     description?: string;
+  };
+  changeHistory?: ChangeHistory[];
+  relatedCompanies?: RelatedCompany[];
+  trustScore?: {
+    score: number; // 0-100
+    factors: {
+      corporateAge: number;
+      hasSuccessor: boolean;
+      addressChanges: number;
+      nameChanges: number;
+    };
   };
 }
 
@@ -318,6 +344,89 @@ export class CorporateNumberAPI {
         closeCause: corporation.closeCause,
         assignmentDate: corporation.assignmentDate,
         changeDate: corporation.changeDate
+      },
+      changeHistory: this.buildChangeHistory(corporation),
+      trustScore: this.calculateTrustScore(corporation)
+    };
+  }
+
+  /**
+   * 変更履歴の構築
+   */
+  private buildChangeHistory(corporation: CorporateNumberSearchResult): ChangeHistory[] {
+    const history: ChangeHistory[] = [];
+
+    // 変更日がある場合
+    if (corporation.changeDate) {
+      history.push({
+        date: corporation.changeDate,
+        type: 'address', // 通常は住所変更
+        details: '本店所在地の変更'
+      });
+    }
+
+    // 閉鎖情報がある場合
+    if (corporation.closeDate) {
+      history.push({
+        date: corporation.closeDate,
+        type: 'close',
+        details: corporation.closeCause || '閉鎖'
+      });
+    }
+
+    // 承継法人番号がある場合
+    if (corporation.successorCorporateNumber) {
+      history.push({
+        date: corporation.closeDate || corporation.changeDate || '',
+        type: 'successor',
+        after: corporation.successorCorporateNumber,
+        details: '事業承継'
+      });
+    }
+
+    return history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+
+  /**
+   * 信頼性スコアの計算
+   */
+  private calculateTrustScore(corporation: CorporateNumberSearchResult): any {
+    const assignmentDate = new Date(corporation.assignmentDate);
+    const now = new Date();
+    const corporateAge = Math.floor((now.getTime() - assignmentDate.getTime()) / (365 * 24 * 60 * 60 * 1000));
+    
+    const hasSuccessor = !!corporation.successorCorporateNumber;
+    const addressChanges = corporation.changeDate ? 1 : 0;
+    const nameChanges = 0; // APIからは取得できないため0
+
+    // スコア計算ロジック
+    let score = 50; // 基準点
+    
+    // 設立年数によるスコア（最大30点）
+    score += Math.min(corporateAge * 2, 30);
+    
+    // 閉鎖されていない場合（20点）
+    if (!corporation.closeDate) {
+      score += 20;
+    }
+    
+    // 承継法人がある場合は信頼性は変わらない
+    if (hasSuccessor) {
+      score += 0;
+    }
+    
+    // 住所変更が少ない（変更がない場合10点）
+    if (addressChanges === 0) {
+      score += 10;
+    }
+
+    return {
+      score: Math.min(Math.max(score, 0), 100),
+      factors: {
+        corporateAge,
+        hasSuccessor,
+        addressChanges,
+        nameChanges
       }
     };
   }
@@ -374,6 +483,176 @@ export class CorporateNumberAPI {
       seen.add(result.corporateNumber);
       return true;
     });
+  }
+
+  /**
+   * 関連企業を検索（同一住所、類似名称など）
+   */
+  async searchRelatedCompanies(baseCompany: EnhancedCompanyInfo): Promise<RelatedCompany[]> {
+    const relatedCompanies: RelatedCompany[] = [];
+    
+    try {
+      // 1. 同一住所の企業を検索
+      const sameAddressCompanies = await this.searchByAddress(
+        baseCompany.address.prefectureName,
+        baseCompany.address.cityName,
+        baseCompany.address.streetNumber || ''
+      );
+      
+      for (const company of sameAddressCompanies) {
+        if (company.corporateNumber !== baseCompany.corporateNumber) {
+          relatedCompanies.push({
+            corporateNumber: company.corporateNumber,
+            name: company.companyName,
+            relation: 'affiliate',
+            details: '同一住所に所在'
+          });
+        }
+      }
+      
+      // 2. 承継法人の検索
+      if (baseCompany.status.closeDate && baseCompany.changeHistory) {
+        const successorHistory = baseCompany.changeHistory.find(h => h.type === 'successor');
+        if (successorHistory?.after) {
+          const successor = await this.searchByCorporateNumber(successorHistory.after);
+          if (successor) {
+            relatedCompanies.push({
+              corporateNumber: successor.corporateNumber,
+              name: successor.companyName,
+              relation: 'successor',
+              details: '事業承継先'
+            });
+          }
+        }
+      }
+      
+      // 3. 類似名称の企業を検索（グループ企業の可能性）
+      const nameKeywords = this.extractNameKeywords(baseCompany.companyName);
+      if (nameKeywords.length > 0) {
+        for (const keyword of nameKeywords) {
+          const similarNameCompanies = await this.searchByName(keyword);
+          
+          for (const company of similarNameCompanies.slice(0, 5)) {
+            if (company.corporateNumber !== baseCompany.corporateNumber &&
+                !relatedCompanies.find(r => r.corporateNumber === company.corporateNumber)) {
+              
+              const relation = this.analyzeRelation(baseCompany, company);
+              if (relation) {
+                relatedCompanies.push({
+                  corporateNumber: company.corporateNumber,
+                  name: company.companyName,
+                  relation: relation.type,
+                  details: relation.details
+                });
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.error('Error searching related companies:', error);
+    }
+    
+    return relatedCompanies;
+  }
+
+  /**
+   * 名称からキーワードを抽出
+   */
+  private extractNameKeywords(companyName: string): string[] {
+    // 法人種別を除去
+    const cleanName = companyName
+      .replace(/株式会社|有限会社|合同会社|合資会社|合名会社|一般社団法人|一般財団法人|医療法人|学校法人|社会福祉法人|宗教法人/g, '')
+      .trim();
+    
+    // グループ企業のパターンを検出
+    const patterns = [
+      /(.+?)ホールディングス?/,
+      /(.+?)グループ/,
+      /(.+?)コーポレーション/,
+      /(.+?)カンパニー/
+    ];
+    
+    const keywords: string[] = [];
+    
+    for (const pattern of patterns) {
+      const match = cleanName.match(pattern);
+      if (match && match[1]) {
+        keywords.push(match[1].trim());
+      }
+    }
+    
+    // パターンにマッチしない場合は、最初の2-4文字を使用
+    if (keywords.length === 0 && cleanName.length >= 2) {
+      keywords.push(cleanName.substring(0, Math.min(4, cleanName.length)));
+    }
+    
+    return keywords;
+  }
+
+  /**
+   * 企業間の関係を分析
+   */
+  private analyzeRelation(company1: EnhancedCompanyInfo, company2: EnhancedCompanyInfo): 
+    { type: 'parent' | 'subsidiary' | 'affiliate'; details: string } | null {
+    
+    const name1 = company1.companyName;
+    const name2 = company2.companyName;
+    
+    // 親会社・子会社パターン
+    if (name1.includes('ホールディング') && name2.includes(this.extractNameKeywords(name1)[0])) {
+      return { type: 'subsidiary', details: 'ホールディングス傘下の可能性' };
+    }
+    if (name2.includes('ホールディング') && name1.includes(this.extractNameKeywords(name2)[0])) {
+      return { type: 'parent', details: 'ホールディングス企業' };
+    }
+    
+    // 同一グループパターン
+    const keywords1 = this.extractNameKeywords(name1);
+    const keywords2 = this.extractNameKeywords(name2);
+    
+    if (keywords1.some(k => keywords2.includes(k))) {
+      return { type: 'affiliate', details: 'グループ企業の可能性' };
+    }
+    
+    return null;
+  }
+
+  /**
+   * 本店・支店情報の取得（複数拠点を持つ企業の検出）
+   */
+  async searchBranchOffices(corporateNumber: string): Promise<{
+    headquarters: EnhancedCompanyInfo;
+    branches: Array<{ address: string; type: string }>;
+  } | null> {
+    try {
+      const headquarters = await this.searchByCorporateNumber(corporateNumber);
+      if (!headquarters) return null;
+      
+      // 同一法人番号で異なる住所の記録があるかチェック
+      // （法人番号APIの制限により、支店情報は直接取得できないため、
+      // 商号変更履歴などから推測）
+      const branches: Array<{ address: string; type: string }> = [];
+      
+      if (headquarters.changeHistory) {
+        headquarters.changeHistory
+          .filter(h => h.type === 'address' && h.before)
+          .forEach(h => {
+            branches.push({
+              address: h.before || '',
+              type: '旧本店所在地'
+            });
+          });
+      }
+      
+      return {
+        headquarters,
+        branches
+      };
+    } catch (error) {
+      this.logger.error('Error searching branch offices:', error);
+      return null;
+    }
   }
 
   /**

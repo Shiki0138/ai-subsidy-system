@@ -285,6 +285,135 @@ router.get('/:id/template',
   }
 );
 
+// 高度な要項分析
+router.post('/:id/analyze',
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.userId;
+
+      // 要項取得
+      const guidelines = await subsidyGuidelineService.getImportedGuidelines();
+      const guideline = guidelines.find(g => g.id === id);
+      
+      if (!guideline || !guideline.parsedGuidelines) {
+        return res.status(404).json({
+          success: false,
+          error: 'Guideline not found'
+        });
+      }
+
+      // AI分析実行
+      const analysisResult = await subsidyGuidelineService.analyzeGuidelineStructure(
+        JSON.stringify(guideline.parsedGuidelines)
+      );
+
+      logger.info('🔍 Guideline analysis completed', {
+        guidelineId: id,
+        userId
+      });
+
+      res.json({
+        success: true,
+        data: {
+          analysis: analysisResult
+        }
+      });
+
+    } catch (error) {
+      logger.error('❌ Guideline analysis failed', {
+        guidelineId: req.params.id,
+        userId: req.user?.userId,
+        error: error.message
+      });
+
+      res.status(500).json({
+        success: false,
+        error: 'Analysis failed',
+        message: error.message
+      });
+    }
+  }
+);
+
+// 申請書テンプレート自動生成
+router.post('/:id/generate-template',
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.userId;
+
+      const template = await subsidyGuidelineService.generateApplicationTemplate(id);
+
+      logger.info('📄 Application template generated', {
+        guidelineId: id,
+        templateName: template.templateName,
+        userId
+      });
+
+      res.json({
+        success: true,
+        message: 'Application template generated successfully',
+        data: {
+          template
+        }
+      });
+
+    } catch (error) {
+      logger.error('❌ Template generation failed', {
+        guidelineId: req.params.id,
+        userId: req.user?.userId,
+        error: error.message
+      });
+
+      res.status(500).json({
+        success: false,
+        error: 'Template generation failed',
+        message: error.message
+      });
+    }
+  }
+);
+
+// 要項更新チェック
+router.get('/:id/check-updates',
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.userId;
+
+      const updateCheck = await subsidyGuidelineService.checkForUpdates(id);
+
+      logger.info('📝 Update check completed', {
+        guidelineId: id,
+        hasUpdates: updateCheck.hasUpdates,
+        userId
+      });
+
+      res.json({
+        success: true,
+        data: updateCheck
+      });
+
+    } catch (error) {
+      logger.error('❌ Update check failed', {
+        guidelineId: req.params.id,
+        userId: req.user?.userId,
+        error: error.message
+      });
+
+      res.status(500).json({
+        success: false,
+        error: 'Update check failed',
+        message: error.message
+      });
+    }
+  }
+);
+
 // 要項削除
 router.delete('/:id',
   authenticateToken,

@@ -33,9 +33,12 @@ export function DevAuthProvider({ children }: { children: React.ReactNode }) {
         // 既存のトークンをチェック
         const token = localStorage.getItem('token')
         
-        if (!token && process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true') {
+        if (!token) {
           // トークンがない場合は自動ログイン
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7001'}/api/dev-auth/auto-login`)
+          const response = await fetch('/api/dev-auth/auto-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          })
           
           if (response.ok) {
             const data = await response.json()
@@ -66,19 +69,17 @@ export function DevAuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       // 開発環境では常に成功
-      if (process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true') {
-        const mockUser = {
-          id: 'dev-user-001',
-          email: email || 'dev@ai-subsidy.test',
-          companyName: email ? `${email.split('@')[0]}株式会社` : '開発テスト株式会社',
-          role: 'user'
-        }
-        
-        localStorage.setItem('token', 'dev-token-' + Date.now())
-        setUser(mockUser)
-        console.log('🔓 開発ログイン成功:', mockUser.email)
-        return true
+      const mockUser = {
+        id: 'dev-user-001',
+        email: email || 'dev@ai-subsidy.test',
+        companyName: email ? `${email.split('@')[0]}株式会社` : '開発テスト株式会社',
+        role: 'user'
       }
+      
+      localStorage.setItem('token', 'dev-token-' + Date.now())
+      setUser(mockUser)
+      console.log('🔓 開発ログイン成功:', mockUser.email)
+      return true
 
       // 本番環境の場合は通常のログイン処理
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
@@ -111,24 +112,7 @@ export function DevAuthProvider({ children }: { children: React.ReactNode }) {
 
   const quickLogin = async (email?: string): Promise<boolean> => {
     try {
-      if (process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true') {
-        return login(email || 'dev@ai-subsidy.test', 'dummy-password')
-      }
-      
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dev-auth/quick-login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email || 'dev@ai-subsidy.test' })
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        localStorage.setItem('token', data.token)
-        setUser(data.user)
-        return true
-      }
-      
-      return false
+      return login(email || 'dev@ai-subsidy.test', 'dummy-password')
     } catch (error) {
       console.error('クイックログインエラー:', error)
       return false

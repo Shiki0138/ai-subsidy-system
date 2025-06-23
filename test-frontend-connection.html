@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>業務改善助成金テスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin-top: 20px; padding: 15px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; }
+        .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>業務改善助成金申請テスト</h1>
+        
+        <form id="applicationForm">
+            <div class="form-group">
+                <label for="companyName">事業所名:</label>
+                <input type="text" id="companyName" value="テスト株式会社" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="industry">業種:</label>
+                <select id="industry" required>
+                    <option value="製造業">製造業</option>
+                    <option value="建設業">建設業</option>
+                    <option value="サービス業">サービス業</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="employeeCount">従業員数:</label>
+                <input type="number" id="employeeCount" value="15" min="1" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="currentWage">現在の最低賃金 (円/時):</label>
+                <input type="number" id="currentWage" value="900" min="500" max="999" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="wageIncrease">賃金引上げ額 (円/時):</label>
+                <select id="wageIncrease" required>
+                    <option value="30">30円</option>
+                    <option value="45">45円</option>
+                    <option value="60" selected>60円</option>
+                    <option value="90">90円</option>
+                </select>
+            </div>
+            
+            <button type="submit">申請書を生成</button>
+        </form>
+        
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        document.getElementById('applicationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '申請書を生成中...';
+            
+            // フォームデータを収集
+            const formData = {
+                companyInfo: {
+                    name: document.getElementById('companyName').value,
+                    industry: document.getElementById('industry').value,
+                    employeeCount: parseInt(document.getElementById('employeeCount').value),
+                    currentMinimumWage: parseInt(document.getElementById('currentWage').value),
+                    regionalMinimumWage: 900,
+                    address: '東京都千代田区テスト1-1-1',
+                    businessType: document.getElementById('industry').value,
+                    yearlyRevenue: 50000000
+                },
+                wageIncreasePlan: {
+                    course: document.getElementById('wageIncrease').value,
+                    targetWage: parseInt(document.getElementById('currentWage').value) + parseInt(document.getElementById('wageIncrease').value),
+                    affectedEmployees: parseInt(document.getElementById('employeeCount').value),
+                    implementationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                    sustainabilityPlan: '生産性向上により継続的な賃金引上げを実現します。'
+                },
+                investmentPlan: {
+                    items: [{
+                        category: '機械装置',
+                        description: '生産性向上設備',
+                        cost: 1000000,
+                        vendor: '設備業者',
+                        expectedEffect: '作業効率の向上'
+                    }],
+                    totalCost: 1000000,
+                    financingMethod: '自己資金およびローン'
+                },
+                productivityPlan: {
+                    currentProductivity: '現在の生産性に課題があります。',
+                    targetProductivity: '生産性の大幅な向上を目指します。',
+                    improvementMeasures: [
+                        '設備導入による作業効率化',
+                        'デジタル化による業務改善',
+                        '従業員のスキルアップ'
+                    ],
+                    measurementMethod: '月次での生産量および品質指標による測定',
+                    expectedROI: 25
+                },
+                businessPlan: {
+                    challenges: '現在の業務における課題を解決する必要があります。',
+                    objectives: '生産性向上と賃金引上げを実現します。',
+                    implementation: '段階的な実施により確実な成果を上げます。',
+                    riskManagement: 'リスク要因を事前に把握し、適切な対策を講じます。',
+                    localContribution: '地域雇用の安定と経済活性化に貢献します。'
+                }
+            };
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/business-improvement-subsidy/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <h3>✅ 申請書生成成功!</h3>
+                        <p><strong>申請ID:</strong> ${result.data.applicationId}</p>
+                        <p><strong>生成ドキュメント数:</strong> ${result.data.documents.length}</p>
+                        <div style="margin-top: 15px;">
+                            <h4>生成された申請書:</h4>
+                            <pre style="background: white; padding: 10px; border: 1px solid #ddd; white-space: pre-wrap;">${result.data.documents[0].content}</pre>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(result.error || '申請書の生成に失敗しました');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <h3>❌ エラーが発生しました</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

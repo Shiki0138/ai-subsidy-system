@@ -409,7 +409,7 @@ export function EnhancedWizard({
           <div>
             {allowBackNavigation && currentStep > 0 && (
               <Button
-                variant="secondary"
+                variant="default"
                 onClick={previousStep}
                 disabled={isLoading}
                 className="flex items-center space-x-2"
@@ -424,7 +424,7 @@ export function EnhancedWizard({
             {/* Save button */}
             {onSave && hasUnsavedChanges && (
               <Button
-                variant="secondary"
+                variant="default"
                 onClick={saveProgress}
                 disabled={isSaving}
                 className="flex items-center space-x-2"

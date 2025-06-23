@@ -410,6 +410,36 @@ export function DashboardClient() {
                   </div>
                   <ArrowRightIcon className="h-4 w-4 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
                 </Link>
+
+                <Link
+                  href="/quick-apply"
+                  className="group w-full bg-gradient-to-r from-green-600 to-green-700 text-white p-4 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all duration-200 flex items-center justify-between shadow-md"
+                  aria-label="かんたん申請を開始"
+                >
+                  <div className="flex items-center">
+                    <BoltIcon className="h-5 w-5 mr-3" aria-hidden="true" />
+                    <div className="text-left">
+                      <div className="font-semibold">かんたん申請</div>
+                      <div className="text-xs text-green-100">2項目入力で即完了</div>
+                    </div>
+                  </div>
+                  <ArrowRightIcon className="h-4 w-4 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+                </Link>
+
+                <Link
+                  href="/subsidies/sustainability"
+                  className="group w-full bg-gradient-to-r from-orange-600 to-orange-700 text-white p-4 rounded-lg font-semibold hover:from-orange-700 hover:to-orange-800 transition-all duration-200 flex items-center justify-between shadow-md"
+                  aria-label="小規模企業持続化補助金申請"
+                >
+                  <div className="flex items-center">
+                    <DocumentTextIcon className="h-5 w-5 mr-3" aria-hidden="true" />
+                    <div className="text-left">
+                      <div className="font-semibold">小規模企業持続化補助金</div>
+                      <div className="text-xs text-orange-100">必要書類を一括生成</div>
+                    </div>
+                  </div>
+                  <ArrowRightIcon className="h-4 w-4 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+                </Link>
                 
                 <div className="grid grid-cols-1 gap-3">
                   <Link

@@ -1044,6 +1044,54 @@ class ApplicationTemplateManager:
                 "description": "ものづくり補助金申請用の標準テンプレート"
             },
             {
+                "name": "小規模事業者持続化補助金 標準テンプレート",
+                "category": TemplateCategory.SUBSIDY_SPECIFIC,
+                "subsidy_type": "小規模事業者持続化補助金",
+                "description": "小規模事業者持続化補助金申請用の標準テンプレート"
+            },
+            {
+                "name": "事業再構築補助金 標準テンプレート",
+                "category": TemplateCategory.SUBSIDY_SPECIFIC,
+                "subsidy_type": "事業再構築補助金",
+                "description": "事業再構築補助金申請用の標準テンプレート"
+            },
+            {
+                "name": "創業補助金 標準テンプレート",
+                "category": TemplateCategory.SUBSIDY_SPECIFIC,
+                "subsidy_type": "創業補助金",
+                "description": "創業補助金申請用の標準テンプレート"
+            },
+            {
+                "name": "雇用関係助成金 標準テンプレート",
+                "category": TemplateCategory.SUBSIDY_SPECIFIC,
+                "subsidy_type": "雇用関係助成金",
+                "description": "キャリアアップ助成金等申請用の標準テンプレート"
+            },
+            {
+                "name": "省エネ補助金 標準テンプレート",
+                "category": TemplateCategory.SUBSIDY_SPECIFIC,
+                "subsidy_type": "省エネ補助金",
+                "description": "省エネルギー投資促進支援事業費補助金申請用の標準テンプレート"
+            },
+            {
+                "name": "研究開発助成金 標準テンプレート",
+                "category": TemplateCategory.SUBSIDY_SPECIFIC,
+                "subsidy_type": "研究開発助成金",
+                "description": "SBIR等研究開発助成金申請用の標準テンプレート"
+            },
+            {
+                "name": "海外展開支援補助金 標準テンプレート",
+                "category": TemplateCategory.SUBSIDY_SPECIFIC,
+                "subsidy_type": "海外展開支援補助金",
+                "description": "JAPANブランド育成支援等事業申請用の標準テンプレート"
+            },
+            {
+                "name": "事業承継補助金 標準テンプレート",
+                "category": TemplateCategory.SUBSIDY_SPECIFIC,
+                "subsidy_type": "事業承継補助金",
+                "description": "事業承継・引継ぎ補助金申請用の標準テンプレート"
+            },
+            {
                 "name": "汎用申請書テンプレート",
                 "category": TemplateCategory.GENERIC,
                 "subsidy_type": "汎用",
@@ -1115,6 +1163,51 @@ class ApplicationTemplateManager:
         elif subsidy_type == "ものづくり補助金":
             base_config[ApplicationSection.PROJECT_SUMMARY]["keywords"].extend(["製造", "技術革新"])
             base_config[ApplicationSection.PROJECT_DESCRIPTION]["keywords"].extend(["設備", "生産性"])
+        elif subsidy_type == "小規模事業者持続化補助金":
+            base_config[ApplicationSection.PROJECT_SUMMARY]["keywords"].extend(["販路開拓", "地域貢献"])
+            base_config[ApplicationSection.BUSINESS_MODEL] = {
+                "min_length": 300,
+                "max_length": 500,
+                "keywords": ["販路", "顧客", "市場"],
+                "required_elements": ["ビジネスモデル", "販売戦略"]
+            }
+        elif subsidy_type == "事業再構築補助金":
+            base_config[ApplicationSection.CURRENT_SITUATION]["keywords"].extend(["売上減少", "事業転換"])
+            base_config[ApplicationSection.PROJECT_DESCRIPTION]["keywords"].extend(["新分野", "業態転換"])
+            base_config[ApplicationSection.MARKET_ANALYSIS] = {
+                "min_length": 400,
+                "max_length": 600,
+                "keywords": ["市場", "競合", "需要"],
+                "required_elements": ["市場分析", "競合状況", "成長性"]
+            }
+        elif subsidy_type == "創業補助金":
+            base_config[ApplicationSection.BUSINESS_MODEL] = {
+                "min_length": 400,
+                "max_length": 600,
+                "keywords": ["ビジネスモデル", "収益", "顧客"],
+                "required_elements": ["事業モデル", "収益計画", "顧客獲得"]
+            }
+            base_config[ApplicationSection.MARKET_ANALYSIS]["keywords"].extend(["ターゲット", "ニーズ"])
+        elif subsidy_type == "雇用関係助成金":
+            base_config[ApplicationSection.IMPLEMENTATION_PLAN]["keywords"].extend(["雇用", "教育", "キャリア"])
+            base_config[ApplicationSection.EXPECTED_OUTCOMES]["keywords"].extend(["定着率", "スキル向上"])
+        elif subsidy_type == "省エネ補助金":
+            base_config[ApplicationSection.PROJECT_DESCRIPTION]["keywords"].extend(["省エネ", "CO2削減", "効率"])
+            base_config[ApplicationSection.EXPECTED_OUTCOMES]["keywords"].extend(["エネルギー削減", "投資回収"])
+        elif subsidy_type == "研究開発助成金":
+            base_config[ApplicationSection.INNOVATION_TECHNOLOGY] = {
+                "min_length": 500,
+                "max_length": 800,
+                "keywords": ["技術", "革新", "研究"],
+                "required_elements": ["技術説明", "新規性", "優位性"]
+            }
+            base_config[ApplicationSection.PROJECT_DESCRIPTION]["keywords"].extend(["研究", "開発", "実験"])
+        elif subsidy_type == "海外展開支援補助金":
+            base_config[ApplicationSection.MARKET_ANALYSIS]["keywords"].extend(["海外市場", "輸出", "現地"])
+            base_config[ApplicationSection.BUSINESS_MODEL]["keywords"].extend(["海外展開", "パートナー"])
+        elif subsidy_type == "事業承継補助金":
+            base_config[ApplicationSection.COMPANY_OVERVIEW]["keywords"].extend(["承継", "後継者", "事業継続"])
+            base_config[ApplicationSection.PROJECT_DESCRIPTION]["keywords"].extend(["経営革新", "承継計画"])
         
         return base_config
 

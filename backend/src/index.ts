@@ -56,6 +56,7 @@ import documentTemplatesRoutes from './routes/documentTemplates';
 import sustainabilitySubsidyRoutes from './routes/sustainabilitySubsidy';
 import monozukuriRoutes from './routes/monozukuri';
 import businessImprovementSubsidyRoutes from './routes/businessImprovementSubsidy';
+import reconstructionSubsidyRoutes from './routes/reconstructionSubsidy';
 import WebSocketService from './services/websocketService';
 // import AdvancedRateLimiter from './middleware/advancedRateLimit';
 // import RATE_LIMIT_CONFIG from './config/rateLimitConfig';
@@ -190,6 +191,7 @@ app.use('/api/document-templates', documentTemplatesRoutes);
 app.use('/api/sustainability-subsidy', sustainabilitySubsidyRoutes);
 app.use('/api/monozukuri', monozukuriRoutes);
 app.use('/api/business-improvement-subsidy', businessImprovementSubsidyRoutes);
+app.use('/api/reconstruction-subsidy', reconstructionSubsidyRoutes);
 
 // プロセスステータス確認用エンドポイント（汎用）
 app.get('/api/processes/:processId/status', async (req: Request, res: Response) => {

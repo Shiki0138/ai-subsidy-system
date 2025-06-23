@@ -622,6 +622,414 @@ ${extractedData.content.substring(0, 8000)} # 長すぎる場合は切り詰め
       throw error;
     }
   }
+
+  /**
+   * 高度な募集要項解析（新機能）
+   */
+  async analyzeGuidelineStructure(content: string): Promise<any> {
+    try {
+      const prompt = `
+以下の補助金募集要項を詳細分析し、申請書作成に必要な構造化情報を抽出してください。
+
+【要項内容】
+${content.substring(0, 10000)}
+
+以下のJSON形式で回答してください:
+{
+  "basicInfo": {
+    "name": "補助金正式名称",
+    "organizationName": "実施機関",
+    "category": "補助金カテゴリ",
+    "overview": "事業概要"
+  },
+  "eligibility": {
+    "targetBusinessTypes": ["対象事業者1", "対象事業者2"],
+    "sizeRequirements": {
+      "employees": "従業員数要件",
+      "capital": "資本金要件",
+      "revenue": "売上要件"
+    },
+    "excludedBusinesses": ["除外対象1", "除外対象2"]
+  },
+  "subsidyDetails": {
+    "minAmount": 最小補助額数値,
+    "maxAmount": 最大補助額数値,
+    "subsidyRate": 補助率数値,
+    "eligibleExpenses": ["補助対象経費1", "補助対象経費2"],
+    "ineligibleExpenses": ["補助対象外経費1", "補助対象外経費2"]
+  },
+  "applicationSections": [
+    {
+      "sectionName": "申請書項目名",
+      "description": "記載内容説明",
+      "maxLength": 文字数制限,
+      "required": true/false,
+      "evaluationWeight": 評価比重,
+      "keyPoints": ["評価ポイント1", "評価ポイント2"]
+    }
+  ],
+  "evaluationCriteria": [
+    {
+      "criteriaName": "評価項目名",
+      "weight": 重み,
+      "maxScore": 最大点数,
+      "description": "評価内容",
+      "keywords": ["重要キーワード1", "重要キーワード2"]
+    }
+  ],
+  "requiredDocuments": [
+    {
+      "documentName": "必要書類名",
+      "required": true/false,
+      "description": "書類説明",
+      "format": "形式要件"
+    }
+  ],
+  "timeline": {
+    "applicationStart": "申請開始日",
+    "applicationEnd": "申請締切日",
+    "evaluationPeriod": "審査期間",
+    "resultAnnouncement": "結果発表日",
+    "projectPeriod": "事業実施期間"
+  },
+  "successFactors": [
+    "採択されやすいポイント1",
+    "採択されやすいポイント2"
+  ],
+  "commonMistakes": [
+    "よくある申請ミス1",
+    "よくある申請ミス2"
+  ]
+}
+`;
+
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      
+      if (isDevelopment || !process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY.includes('test')) {
+        return this.generateMockAnalysis();
+      }
+
+      const response = await this.claude.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 4000,
+        messages: [{
+          role: 'user',
+          content: prompt
+        }]
+      });
+
+      const responseText = response.content[0].type === 'text' ? response.content[0].text : '';
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      
+      if (!jsonMatch) {
+        throw new Error('Analysis response does not contain valid JSON');
+      }
+
+      return JSON.parse(jsonMatch[0]);
+
+    } catch (error) {
+      logger.error('❌ Guideline structure analysis failed', {
+        error: error.message
+      });
+      return this.generateMockAnalysis();
+    }
+  }
+
+  /**
+   * 申請書テンプレート自動生成
+   */
+  async generateApplicationTemplate(guidelineId: string): Promise<any> {
+    try {
+      const guideline = await prisma.subsidyProgram.findUnique({
+        where: { id: guidelineId },
+        select: {
+          name: true,
+          applicationGuidelines: true
+        }
+      });
+
+      if (!guideline || !guideline.applicationGuidelines) {
+        throw new Error('Guideline not found or missing application guidelines');
+      }
+
+      const parsedGuidelines = JSON.parse(guideline.applicationGuidelines as string);
+      
+      // 申請書テンプレートを生成
+      const template = {
+        templateName: `${guideline.name}_申請書テンプレート`,
+        documentType: '申請書',
+        structure: {
+          sections: parsedGuidelines.applicationSections?.map((section: any) => ({
+            id: this.generateSectionId(section.sectionName),
+            name: section.sectionName,
+            type: this.determineSectionType(section.description),
+            required: section.required,
+            maxLength: section.maxLength,
+            placeholder: this.generatePlaceholder(section.description),
+            validationRules: {
+              required: section.required,
+              maxLength: section.maxLength,
+              minLength: section.required ? 50 : 0
+            }
+          })) || []
+        },
+        defaultContent: {
+          header: `${guideline.name} 申請書`,
+          footer: '以上、申請いたします。',
+          sections: {}
+        },
+        requiredFields: parsedGuidelines.applicationSections
+          ?.filter((s: any) => s.required)
+          ?.map((s: any) => this.generateSectionId(s.sectionName)) || [],
+        formatOptions: {
+          fontSize: 12,
+          lineHeight: 1.5,
+          margins: { top: 20, bottom: 20, left: 25, right: 25 },
+          fontFamily: 'MS明朝'
+        }
+      };
+
+      logger.info('📄 Application template generated', {
+        guidelineId,
+        templateName: template.templateName,
+        sectionsCount: template.structure.sections.length
+      });
+
+      return template;
+
+    } catch (error) {
+      logger.error('❌ Failed to generate application template', {
+        guidelineId,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * 補助金要項の更新チェック
+   */
+  async checkForUpdates(guidelineId: string): Promise<any> {
+    try {
+      const guideline = await prisma.subsidyProgram.findUnique({
+        where: { id: guidelineId },
+        select: {
+          sourceUrl: true,
+          lastUpdated: true,
+          applicationGuidelines: true
+        }
+      });
+
+      if (!guideline?.sourceUrl) {
+        throw new Error('Source URL not available for update check');
+      }
+
+      // 元のURLから最新版を取得
+      const latestContent = await this.extractWebContent(guideline.sourceUrl);
+      const latestAnalysis = await this.analyzeWithClaude(latestContent);
+
+      // 既存の内容と比較
+      const currentContent = guideline.applicationGuidelines 
+        ? JSON.parse(guideline.applicationGuidelines as string)
+        : null;
+
+      const hasChanges = this.detectChanges(currentContent, latestAnalysis);
+
+      if (hasChanges) {
+        logger.info('📝 Updates detected for guideline', {
+          guidelineId,
+          lastCheck: new Date()
+        });
+
+        return {
+          hasUpdates: true,
+          changes: hasChanges,
+          latestContent: latestAnalysis,
+          suggestedActions: this.generateUpdateSuggestions(hasChanges)
+        };
+      }
+
+      return { hasUpdates: false, lastChecked: new Date() };
+
+    } catch (error) {
+      logger.error('❌ Failed to check for updates', {
+        guidelineId,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * 模擬分析結果生成
+   */
+  private generateMockAnalysis(): any {
+    return {
+      basicInfo: {
+        name: "事業者支援補助金",
+        organizationName: "経済産業省",
+        category: "事業発展支援",
+        overview: "中小企業の事業発展を支援する補助金"
+      },
+      eligibility: {
+        targetBusinessTypes: ["中小企業", "小規模事業者"],
+        sizeRequirements: {
+          employees: "300人以下",
+          capital: "3億円以下",
+          revenue: "制限なし"
+        },
+        excludedBusinesses: ["風俗営業", "パチンコ業"]
+      },
+      subsidyDetails: {
+        minAmount: 500000,
+        maxAmount: 5000000,
+        subsidyRate: 0.5,
+        eligibleExpenses: ["設備費", "技術導入費", "専門家経費"],
+        ineligibleExpenses: ["土地取得費", "既存債務返済"]
+      },
+      applicationSections: [
+        {
+          sectionName: "事業概要",
+          description: "実施する事業の概要を記載",
+          maxLength: 1000,
+          required: true,
+          evaluationWeight: 20,
+          keyPoints: ["革新性", "実現可能性"]
+        },
+        {
+          sectionName: "事業計画",
+          description: "具体的な事業計画を記載",
+          maxLength: 2000,
+          required: true,
+          evaluationWeight: 30,
+          keyPoints: ["具体性", "効果予測"]
+        }
+      ],
+      evaluationCriteria: [
+        {
+          criteriaName: "事業の革新性",
+          weight: 0.3,
+          maxScore: 30,
+          description: "技術やサービスの革新度",
+          keywords: ["新規性", "独自性", "先進性"]
+        }
+      ],
+      requiredDocuments: [
+        {
+          documentName: "申請書",
+          required: true,
+          description: "所定様式による申請書",
+          format: "PDF形式"
+        }
+      ],
+      timeline: {
+        applicationStart: "2024-04-01",
+        applicationEnd: "2024-06-30",
+        evaluationPeriod: "2024-07-01～2024-08-31",
+        resultAnnouncement: "2024-09-30",
+        projectPeriod: "2024-10-01～2025-03-31"
+      },
+      successFactors: [
+        "明確な課題設定と解決策の提示",
+        "具体的な数値目標の設定",
+        "実施体制の明確化"
+      ],
+      commonMistakes: [
+        "抽象的な表現が多い",
+        "実施スケジュールが曖昧",
+        "予算積算の根拠不足"
+      ]
+    };
+  }
+
+  /**
+   * セクションIDを生成
+   */
+  private generateSectionId(sectionName: string): string {
+    return sectionName
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .replace(/\s+/g, '_');
+  }
+
+  /**
+   * セクションタイプを判定
+   */
+  private determineSectionType(description: string): string {
+    if (description.includes('概要') || description.includes('説明')) {
+      return 'text';
+    } else if (description.includes('計画') || description.includes('スケジュール')) {
+      return 'structured_text';
+    } else if (description.includes('金額') || description.includes('予算')) {
+      return 'financial';
+    }
+    return 'text';
+  }
+
+  /**
+   * プレースホルダーを生成
+   */
+  private generatePlaceholder(description: string): string {
+    return `${description}\n\n[ここに具体的な内容を記載してください]\n\n・\n・\n・`;
+  }
+
+  /**
+   * 変更を検出
+   */
+  private detectChanges(currentContent: any, latestContent: any): any {
+    if (!currentContent) return null;
+
+    const changes: any = {};
+
+    // 金額の変更チェック
+    if (currentContent.maxAmount !== latestContent.maxAmount) {
+      changes.maxAmount = {
+        old: currentContent.maxAmount,
+        new: latestContent.maxAmount
+      };
+    }
+
+    // 申請期限の変更チェック
+    if (currentContent.applicationPeriod?.end !== latestContent.applicationPeriod?.end) {
+      changes.deadline = {
+        old: currentContent.applicationPeriod?.end,
+        new: latestContent.applicationPeriod?.end
+      };
+    }
+
+    // 要件の変更チェック
+    const oldRequirements = JSON.stringify(currentContent.eligibilityCriteria || []);
+    const newRequirements = JSON.stringify(latestContent.eligibilityCriteria || []);
+    if (oldRequirements !== newRequirements) {
+      changes.requirements = {
+        hasChanges: true,
+        details: 'Eligibility criteria have been updated'
+      };
+    }
+
+    return Object.keys(changes).length > 0 ? changes : null;
+  }
+
+  /**
+   * 更新提案を生成
+   */
+  private generateUpdateSuggestions(changes: any): string[] {
+    const suggestions = [];
+
+    if (changes.maxAmount) {
+      suggestions.push(`補助金上限額が${changes.maxAmount.old}円から${changes.maxAmount.new}円に変更されました。申請内容の見直しをお勧めします。`);
+    }
+
+    if (changes.deadline) {
+      suggestions.push(`申請締切日が変更されました。新しい締切日: ${changes.deadline.new}`);
+    }
+
+    if (changes.requirements) {
+      suggestions.push('申請要件が更新されています。詳細を確認して申請書の修正が必要か検討してください。');
+    }
+
+    return suggestions;
+  }
 }
 
 export const subsidyGuidelineService = new SubsidyGuidelineService();

@@ -1,0 +1,48 @@
+{
+  "company_info": {
+    "company_name": "株式会社サンプル商店",
+    "representative_name": "田中一郎",
+    "postal_code": "100-0001",
+    "address": "東京都千代田区千代田1-1-1",
+    "phone": "03-1234-5678",
+    "email": "info@sample-shop.jp",
+    "business_type": "CORPORATION",
+    "employee_count": 4,
+    "main_business": "地域特産品の製造・販売、飲食店経営",
+    "last_year_sales": 15000000,
+    "chamber_member": true,
+    "chamber_name": "東京商工会議所"
+  },
+  "project_info": {
+    "project_title": "ECサイト構築とSNS活用による新規顧客開拓事業",
+    "purpose": "SALES_EXPANSION",
+    "start_date": "2024-04-01T00:00:00",
+    "end_date": "2024-11-30T00:00:00",
+    "total_budget": 1800000,
+    "subsidy_amount": 1200000,
+    "current_situation": "現在は実店舗での販売が中心で、コロナ禍以降、来店客数が減少傾向にある。オンライン販売の仕組みがなく、新規顧客の獲得が困難な状況。",
+    "challenges": [
+      "実店舗の来客数減少",
+      "オンライン販売チャネルの不在",
+      "若年層へのアプローチ不足",
+      "商品認知度の低さ"
+    ],
+    "target_customers": "30-50代の地域外在住者、贈答品を求める法人客",
+    "sales_strategy": "ECサイトを構築し、全国への販売を可能にする。SNSを活用した情報発信により、商品の認知度を向上させ、新規顧客を獲得する。",
+    "expected_effects": [
+      "年間売上20%増加",
+      "新規顧客月15件獲得",
+      "ECサイト経由売上が全体の30%",
+      "SNSフォロワー1000人達成"
+    ],
+    "expense_breakdown": {
+      "ウェブサイト関連費": 1000000,
+      "広報費": 500000,
+      "委託費": 200000,
+      "資料購入費": 100000
+    },
+    "sales_increase_rate": 0.2,
+    "new_customer_count": 180,
+    "productivity_improvement": 0.15
+  }
+}

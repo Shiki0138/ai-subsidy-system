@@ -1,0 +1,43 @@
+{
+  "application_id": "jizokuka_20250620143630",
+  "created_at": "2025-06-20T14:36:30.635453",
+  "updated_at": "2025-06-20T14:36:30.636877",
+  "status": "ready",
+  "company_info": {
+    "company_name": "テスト商店",
+    "representative_name": "山田太郎",
+    "postal_code": "123-4567",
+    "address": "東京都千代田区テスト町1-2-3",
+    "phone": "03-1234-5678",
+    "email": "test@example.com",
+    "business_type": "corporation",
+    "employee_count": 5,
+    "main_business": "小売業",
+    "last_year_sales": 10000000
+  },
+  "project_info": {
+    "project_title": "Webサイト構築による販路拡大事業",
+    "purpose": "sales_expansion",
+    "total_budget": 1500000,
+    "subsidy_amount": 1000000,
+    "expense_breakdown": {
+      "ウェブサイト関連費": 900000,
+      "広報費": 450000,
+      "委託費": 150000
+    },
+    "sales_increase_rate": 0.2,
+    "new_customer_count": 100
+  },
+  "documents": {
+    "form1_application": "output/jizokuka/jizokuka_20250620143630/様式1_申請書.txt",
+    "form2_business_plan": "output/jizokuka/jizokuka_20250620143630/様式2_経営計画書.txt",
+    "form3_subsidy_plan": "output/jizokuka/jizokuka_20250620143630/様式3_補助事業計画書.txt",
+    "estimate": "output/jizokuka/jizokuka_20250620143630/見積書テンプレート.txt"
+  },
+  "metadata": {
+    "total_documents": 4,
+    "checklist_path": "output/jizokuka/jizokuka_20250620143630/提出書類チェックリスト.txt",
+    "guide_path": "output/jizokuka/jizokuka_20250620143630/申請ガイド.txt",
+    "output_directory": "output/jizokuka/jizokuka_20250620143630"
+  }
+}

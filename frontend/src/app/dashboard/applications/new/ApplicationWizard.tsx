@@ -24,9 +24,12 @@ import {
   ClipboardDocumentCheckIcon,
   SparklesIcon
 } from '@heroicons/react/24/outline'
+import { applicationsApi, type AnalysisResult } from '@/services/api/applications'
+import MonozukuriQuickForm from './MonozukuriQuickForm'
 
 // ステップ1: 補助金選択
-function SubsidySelectionStep({ data, onChange, onNext }: StepProps) {
+function SubsidySelectionStep({ data, onChange, onNext, onQuickApply }: StepProps & { onQuickApply?: (program: any) => void }) {
+  const router = useRouter();
   const subsidyPrograms = [
     {
       id: 'jizokukahojokin',
@@ -37,6 +40,28 @@ function SubsidySelectionStep({ data, onChange, onNext }: StepProps) {
       subsidyRate: 0.67,
       deadline: '2024年6月30日',
       requirements: ['従業員20人以下', '商工会議所の支援']
+    },
+    {
+      id: 'monozukuri-hojokin',
+      name: 'ものづくり補助金',
+      category: '革新的サービス開発・試作品開発・生産プロセスの改善',
+      description: '中小企業の革新的な設備投資を支援',
+      maxAmount: 10000000,
+      subsidyRate: 0.5,
+      deadline: '2024年7月31日',
+      requirements: ['革新的サービス・試作品開発', '設備投資100万円以上'],
+      isQuickApply: true
+    },
+    {
+      id: 'jigyou-saikouchiku',
+      name: '事業再構築補助金',
+      category: '通常枠・大規模賃金引上枠・卒業促進枠・グローバルV字回復枠',
+      description: 'ポストコロナ・ウィズコロナの時代の経済社会の変化に対応するための事業再構築を支援',
+      maxAmount: 150000000,
+      subsidyRate: 0.75,
+      deadline: '2024年8月30日',
+      requirements: ['売上高10%以上減少', '認定経営革新等支援機関の確認', '付加価値額年率平均3.0%以上増加'],
+      isComprehensive: true
     },
     {
       id: 'itdounyu',
@@ -74,6 +99,15 @@ function SubsidySelectionStep({ data, onChange, onNext }: StepProps) {
             key={program.id}
             onClick={() => {
               onChange({ subsidyProgramId: program.id, subsidyProgram: program })
+              if (program.isQuickApply && onQuickApply) {
+                onQuickApply(program)
+                return
+              }
+              if (program.isComprehensive) {
+                // 事業再構築補助金の包括的ウィザードに遷移
+                router.push('/dashboard/subsidies/reconstruction')
+                return
+              }
               setTimeout(onNext, 300)
             }}
             className={`
@@ -86,7 +120,21 @@ function SubsidySelectionStep({ data, onChange, onNext }: StepProps) {
           >
             <div className="flex justify-between items-start">
               <div className="flex-1">
-                <h4 className="font-medium text-gray-900">{program.name}</h4>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium text-gray-900">{program.name}</h4>
+                  {program.isQuickApply && (
+                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                      <SparklesIcon className="w-3 h-3 mr-1" />
+                      簡単申請
+                    </span>
+                  )}
+                  {program.isComprehensive && (
+                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                      <DocumentTextIcon className="w-3 h-3 mr-1" />
+                      包括的申請
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-gray-600 mt-1">{program.category}</p>
                 <p className="text-sm text-gray-600 mt-2">{program.description}</p>
                 
@@ -253,6 +301,19 @@ function CompanyInfoStep({ data, onChange, onNext }: StepProps) {
               placeholder="・生産性の向上&#10;・新規顧客の開拓&#10;・デジタル化の遅れ"
             />
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              目標・達成したいこと
+            </label>
+            <textarea
+              value={data.objectives || ''}
+              onChange={(e) => handleChange('objectives', e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              rows={3}
+              placeholder="・業務効率化による収益性向上&#10;・新市場への参入&#10;・持続可能な成長基盤の確立"
+            />
+          </div>
         </div>
       </StepSection>
 
@@ -347,6 +408,19 @@ function ProjectPlanStep({ data, onChange, onNext }: StepProps) {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               rows={3}
               placeholder="・売上20%向上&#10;・業務時間30%削減&#10;・新規顧客50件獲得"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              実施期間
+            </label>
+            <input
+              type="text"
+              value={data.timeline || ''}
+              onChange={(e) => handleChange('timeline', e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="例: 2024年4月〜2025年3月（12ヶ月間）"
             />
           </div>
         </div>
@@ -515,7 +589,7 @@ function BudgetPlanStep({ data, onChange, onNext }: StepProps) {
 
 // ステップ5: AI分析・最適化
 function AIAnalysisStep({ data, onChange, onNext, isLoading }: StepProps) {
-  const [analysisResult, setAnalysisResult] = useState<any>(null)
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   const runAnalysis = async () => {
@@ -523,51 +597,46 @@ function AIAnalysisStep({ data, onChange, onNext, isLoading }: StepProps) {
     
     try {
       // AI分析を実行
-      const response = await fetch('/api/applications/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subsidyProgramId: data.subsidyProgramId,
-          companyProfile: {
-            companyName: data.companyName,
-            industry: data.industry,
-            employeeCount: data.employeeCount,
-            businessDescription: data.businessDescription,
-            strengths: data.strengths?.split('\n').filter(Boolean) || [],
-            challenges: data.challenges?.split('\n').filter(Boolean) || []
-          },
-          projectPlan: {
-            title: data.projectTitle,
-            purpose: data.projectObjectives,
-            background: data.projectBackground,
-            implementation: data.implementation,
-            expectedResults: data.expectedResults?.split('\n').filter(Boolean) || [],
-            budget: data.budgetItems?.reduce((sum: number, item: any) => sum + item.amount, 0) || 0
-          }
-        })
+      const result = await applicationsApi.analyzeMatch({
+        subsidyProgramId: data.subsidyProgramId,
+        companyProfile: {
+          id: 'temp-id',
+          companyName: data.companyName,
+          industry: data.industry,
+          employeeCount: data.employeeCount,
+          businessDescription: data.businessDescription,
+          strengths: data.strengths?.split('\n').filter(Boolean) || [],
+          challenges: data.challenges?.split('\n').filter(Boolean) || [],
+          objectives: data.objectives?.split('\n').filter(Boolean) || []
+        },
+        projectPlan: {
+          title: data.projectTitle,
+          purpose: data.projectObjectives,
+          background: data.projectBackground,
+          implementation: data.implementation || '',
+          expectedResults: data.expectedResults?.split('\n').filter(Boolean) || [],
+          budget: data.budgetItems?.reduce((sum: number, item: any) => sum + item.amount, 0) || 0,
+          timeline: data.timeline || ''
+        }
       })
 
-      if (response.ok) {
-        const result = await response.json()
-        setAnalysisResult(result)
-        onChange({ analysisResult: result })
-        
-        // 最適化された内容を自動適用
-        if (result.generatedContent) {
-          onChange({
-            optimizedTitle: result.generatedContent.optimizedTitle,
-            optimizedPurpose: result.generatedContent.optimizedPurpose,
-            optimizedBackground: result.generatedContent.optimizedBackground,
-            keyPhrases: result.generatedContent.keyPhrases
-          })
-        }
-        
-        toast.success('AI分析が完了しました')
-      } else {
-        toast.error('分析に失敗しました')
+      setAnalysisResult(result)
+      onChange({ analysisResult: result })
+      
+      // 最適化された内容を自動適用
+      if (result.generatedContent) {
+        onChange({
+          optimizedTitle: result.generatedContent.optimizedTitle,
+          optimizedPurpose: result.generatedContent.optimizedPurpose,
+          optimizedBackground: result.generatedContent.optimizedBackground,
+          keyPhrases: result.generatedContent.keyPhrases
+        })
       }
+      
+      toast.success('AI分析が完了しました')
     } catch (error) {
-      toast.error('エラーが発生しました')
+      console.error('Analysis error:', error)
+      toast.error('分析に失敗しました')
     } finally {
       setIsAnalyzing(false)
     }
@@ -726,19 +795,42 @@ function ApplicationReviewStep({ data, onChange, onNext }: StepProps) {
     setIsGenerating(true)
     
     try {
-      const response = await fetch('/api/applications/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+      const document = await applicationsApi.generateApplication({
+        subsidyProgramId: data.subsidyProgramId,
+        subsidyProgram: data.subsidyProgram,
+        companyProfile: {
+          id: 'temp-id',
+          companyName: data.companyName,
+          industry: data.industry,
+          employeeCount: data.employeeCount,
+          businessDescription: data.businessDescription,
+          strengths: data.strengths?.split('\n').filter(Boolean) || [],
+          challenges: data.challenges?.split('\n').filter(Boolean) || [],
+          objectives: data.objectives?.split('\n').filter(Boolean) || []
+        },
+        projectPlan: {
+          title: data.projectTitle,
+          purpose: data.projectObjectives,
+          background: data.projectBackground,
+          implementation: data.implementation || '',
+          expectedResults: data.expectedResults?.split('\n').filter(Boolean) || [],
+          budget: data.budgetItems?.reduce((sum: number, item: any) => sum + item.amount, 0) || 0,
+          timeline: data.timeline || ''
+        },
+        budgetItems: data.budgetItems || [],
+        analysisResult: data.analysisResult,
+        optimizedTitle: data.optimizedTitle,
+        optimizedPurpose: data.optimizedPurpose,
+        optimizedBackground: data.optimizedBackground,
+        implementation: data.implementation,
+        expectedResults: data.expectedResults?.split('\n').filter(Boolean) || []
       })
 
-      if (response.ok) {
-        const result = await response.json()
-        setGeneratedDocument(result.document)
-        onChange({ generatedDocument: result.document })
-        toast.success('申請書が生成されました')
-      }
+      setGeneratedDocument(document)
+      onChange({ generatedDocument: document })
+      toast.success('申請書が生成されました')
     } catch (error) {
+      console.error('Generation error:', error)
       toast.error('申請書生成に失敗しました')
     } finally {
       setIsGenerating(false)
@@ -776,83 +868,141 @@ function ApplicationReviewStep({ data, onChange, onNext }: StepProps) {
         {/* 申請書プレビュー */}
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <h3 className="text-xl font-bold text-gray-900 mb-4">
-            {data.optimizedTitle || data.projectTitle}
+            {generatedDocument.title}
           </h3>
 
           <div className="space-y-6">
-            <section>
-              <h4 className="text-lg font-medium text-gray-900 mb-2">1. 事業概要</h4>
-              <div className="bg-gray-50 rounded p-4">
-                <p className="text-gray-700 whitespace-pre-wrap">
-                  {data.optimizedPurpose || data.projectSummary}
-                </p>
-              </div>
-            </section>
+            {generatedDocument.sections.summary && (
+              <section>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">1. 事業概要</h4>
+                <div className="bg-gray-50 rounded p-4">
+                  <p className="text-gray-700 whitespace-pre-wrap">
+                    {generatedDocument.sections.summary}
+                  </p>
+                </div>
+              </section>
+            )}
 
-            <section>
-              <h4 className="text-lg font-medium text-gray-900 mb-2">2. 事業実施の背景</h4>
-              <div className="bg-gray-50 rounded p-4">
-                <p className="text-gray-700 whitespace-pre-wrap">
-                  {data.optimizedBackground || data.projectBackground}
-                </p>
-              </div>
-            </section>
+            {generatedDocument.sections.background && (
+              <section>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">2. 事業実施の背景・目的</h4>
+                <div className="bg-gray-50 rounded p-4">
+                  <p className="text-gray-700 whitespace-pre-wrap">
+                    {generatedDocument.sections.background}
+                  </p>
+                </div>
+              </section>
+            )}
 
-            <section>
-              <h4 className="text-lg font-medium text-gray-900 mb-2">3. 実施内容</h4>
-              <div className="bg-gray-50 rounded p-4">
-                <p className="text-gray-700 whitespace-pre-wrap">
-                  {data.implementation}
-                </p>
-              </div>
-            </section>
+            {generatedDocument.sections.implementation && (
+              <section>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">3. 事業内容</h4>
+                <div className="bg-gray-50 rounded p-4">
+                  <p className="text-gray-700 whitespace-pre-wrap">
+                    {generatedDocument.sections.implementation}
+                  </p>
+                </div>
+              </section>
+            )}
 
-            <section>
-              <h4 className="text-lg font-medium text-gray-900 mb-2">4. 期待される効果</h4>
-              <div className="bg-gray-50 rounded p-4">
-                <p className="text-gray-700 whitespace-pre-wrap">
-                  {data.expectedResults}
-                </p>
-              </div>
-            </section>
+            {generatedDocument.sections.expectedEffects && (
+              <section>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">4. 期待される効果</h4>
+                <div className="bg-gray-50 rounded p-4">
+                  <p className="text-gray-700 whitespace-pre-wrap">
+                    {generatedDocument.sections.expectedEffects}
+                  </p>
+                </div>
+              </section>
+            )}
 
-            <section>
-              <h4 className="text-lg font-medium text-gray-900 mb-2">5. 事業予算</h4>
-              <div className="bg-gray-50 rounded p-4">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2">費目</th>
-                      <th className="text-left py-2">内容</th>
-                      <th className="text-right py-2">金額</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(data.budgetItems || []).map((item: any, i: number) => (
-                      <tr key={i} className="border-b">
-                        <td className="py-2">{item.category}</td>
-                        <td className="py-2">{item.description}</td>
-                        <td className="py-2 text-right">¥{item.amount.toLocaleString()}</td>
-                      </tr>
+            {generatedDocument.sections.organizationStructure && (
+              <section>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">5. 実施体制</h4>
+                <div className="bg-gray-50 rounded p-4">
+                  <p className="text-gray-700 whitespace-pre-wrap">
+                    {generatedDocument.sections.organizationStructure}
+                  </p>
+                </div>
+              </section>
+            )}
+
+            {generatedDocument.sections.schedule && (
+              <section>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">6. スケジュール</h4>
+                <div className="bg-gray-50 rounded p-4">
+                  <p className="text-gray-700 whitespace-pre-wrap">
+                    {generatedDocument.sections.schedule}
+                  </p>
+                </div>
+              </section>
+            )}
+
+            {generatedDocument.sections.budget && (
+              <section>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">7. 収支計画</h4>
+                <div className="bg-gray-50 rounded p-4">
+                  {typeof generatedDocument.sections.budget === 'string' ? (
+                    <p className="text-gray-700 whitespace-pre-wrap">
+                      {generatedDocument.sections.budget}
+                    </p>
+                  ) : (
+                    <div>
+                      <table className="w-full text-sm mb-4">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-2">費目</th>
+                            <th className="text-left py-2">内容</th>
+                            <th className="text-right py-2">金額</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {generatedDocument.sections.budget.items?.map((item: any, i: number) => (
+                            <tr key={i} className="border-b">
+                              <td className="py-2">{item.category}</td>
+                              <td className="py-2">{item.description}</td>
+                              <td className="py-2 text-right">¥{item.amount.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="font-bold">
+                            <td colSpan={2} className="py-2">合計</td>
+                            <td className="py-2 text-right">
+                              ¥{generatedDocument.sections.budget.total?.toLocaleString()}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <p>補助率: {Math.round(generatedDocument.sections.budget.subsidyRate * 100)}%</p>
+                        <p>補助金額: ¥{generatedDocument.sections.budget.subsidyAmount?.toLocaleString()}</p>
+                        <p>自己負担額: ¥{generatedDocument.sections.budget.selfFunding?.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {generatedDocument.sections.attachments && (
+              <section>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">8. 添付書類</h4>
+                <div className="bg-gray-50 rounded p-4">
+                  <ul className="list-disc list-inside space-y-1">
+                    {generatedDocument.sections.attachments.map((doc: string, i: number) => (
+                      <li key={i} className="text-gray-700">{doc}</li>
                     ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="font-bold">
-                      <td colSpan={2} className="py-2">合計</td>
-                      <td className="py-2 text-right">
-                        ¥{data.budgetItems?.reduce((sum: number, item: any) => sum + item.amount, 0).toLocaleString()}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </section>
+                  </ul>
+                </div>
+              </section>
+            )}
           </div>
         </div>
 
         <div className="flex justify-between">
           <button
-            onClick={() => toast.info('編集機能は準備中です')}
+            onClick={() => toast('編集機能は準備中です')}
             className="bg-gray-500 text-white py-2 px-6 rounded-lg hover:bg-gray-600 transition-colors"
           >
             編集する
@@ -873,13 +1023,50 @@ function ApplicationReviewStep({ data, onChange, onNext }: StepProps) {
 // メインコンポーネント
 export function ApplicationWizard() {
   const router = useRouter()
+  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+  const [showQuickApply, setShowQuickApply] = useState(false)
+  const [selectedSubsidyProgram, setSelectedSubsidyProgram] = useState<any>(null)
   
+  // 初期データの設定（クイック申請対応）
+  const getInitialData = () => {
+    if (typeof window !== 'undefined') {
+      const quickApplyData = sessionStorage.getItem('quickApplyData')
+      if (quickApplyData) {
+        const data = JSON.parse(quickApplyData)
+        sessionStorage.removeItem('quickApplyData')
+        return {
+          subsidyProgramId: data.subsidyId,
+          companyName: data.company.name,
+          industry: data.company.industry,
+          employeeCount: data.company.employees,
+          location: data.company.location_pref,
+          projectTitle: data.project.objective.substring(0, 50) + '事業',
+          projectObjectives: data.project.objective,
+          projectBackground: `現在の課題を解決するため、${data.project.objective}を実施する必要があります。`,
+          budgetItems: [{
+            category: 'その他',
+            description: '事業実施費用',
+            amount: data.project.budget,
+            isSubsidyTarget: true
+          }],
+          expectedResults: data.project.expected_effect || '業務効率化と収益向上'
+        }
+      }
+    }
+    return {}
+  }
+  
+  const handleQuickApply = (program: any) => {
+    setSelectedSubsidyProgram(program)
+    setShowQuickApply(true)
+  }
+
   const wizardSteps: WizardStep[] = [
     {
       id: 'subsidy-selection',
       title: '補助金選択',
       description: '申請する補助金プログラムを選択',
-      component: SubsidySelectionStep,
+      component: (props: StepProps) => <SubsidySelectionStep {...props} onQuickApply={handleQuickApply} />,
       estimatedTime: 2
     },
     {
@@ -981,6 +1168,33 @@ export function ApplicationWizard() {
     } catch (error) {
       console.error('Save error:', error)
     }
+  }
+
+  if (showQuickApply && selectedSubsidyProgram) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setShowQuickApply(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ← 戻る
+                </button>
+                <h1 className="ml-4 text-xl font-semibold text-gray-900">
+                  {selectedSubsidyProgram.name} - 簡単申請
+                </h1>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <MonozukuriQuickForm />
+        </div>
+      </div>
+    )
   }
 
   return (

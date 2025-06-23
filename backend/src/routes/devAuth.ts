@@ -40,15 +40,14 @@ router.get('/auto-login', async (req, res) => {
       user = await prisma.user.create({
         data: {
           email: 'dev@ai-subsidy.test',
-          password: 'hashed-password', // 実際には使用しない
+          passwordHash: 'hashed-password', // 実際には使用しない
           companyName: '開発テスト株式会社',
           representativeName: '開発 太郎',
-          phoneNumber: '03-0000-0000',
+          phone: '03-0000-0000',
           address: '東京都千代田区開発町1-1-1',
           businessType: 'ソフトウェア開発',
           employeeCount: 10,
-          isActive: true,
-          role: 'user'
+          role: 'USER'
         }
       });
       logger.info('テストユーザーを作成しました');
@@ -88,7 +87,7 @@ router.get('/auto-login', async (req, res) => {
     logger.error('開発用自動ログインエラー:', error);
     res.status(500).json({ 
       error: 'Auto login failed',
-      details: error.message 
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -127,15 +126,14 @@ router.post('/quick-login', async (req, res) => {
       user = await prisma.user.create({
         data: {
           email,
-          password: 'hashed-password',
+          passwordHash: 'hashed-password',
           companyName,
           representativeName: '開発者',
-          phoneNumber: '00-0000-0000',
+          phone: '00-0000-0000',
           address: '開発環境',
           businessType: '開発テスト',
           employeeCount: 1,
-          isActive: true,
-          role: 'user'
+          role: 'USER'
         }
       });
     }
