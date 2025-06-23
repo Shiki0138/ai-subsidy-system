@@ -152,6 +152,27 @@ export function SubsidyProgramsClient() {
           successRate: 78
         },
         {
+          id: 'business-improvement-subsidy',
+          name: '業務改善助成金',
+          category: '賃金向上・生産性向上',
+          description: '生産性向上に資する設備投資等を行うとともに、事業場内最低賃金を一定額以上引き上げた場合、その設備投資などにかかった費用の一部を助成する制度です。（厚生労働省助成金）',
+          maxAmount: 6000000,
+          applicationPeriod: {
+            start: '2024-04-01',
+            end: '2024-12-27'
+          },
+          targetBusinesses: ['中小企業', '小規模事業者'],
+          requirements: [
+            '事業場内最低賃金と地域別最低賃金の差が50円以内',
+            '生産性向上に資する設備投資等を行うこと',
+            '事業場内最低賃金を一定額以上引き上げること'
+          ],
+          status: 'accepting',
+          difficulty: 'easy',
+          popularity: 80,
+          successRate: 70
+        },
+        {
           id: 'carbon-neutral',
           name: 'カーボンニュートラル投資促進税制',
           category: '環境・エネルギー',
@@ -434,9 +455,13 @@ export function SubsidyProgramsClient() {
                     </div>
                     
                     <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                      <div className="text-xs text-gray-500">
-                        人気度: {program.popularity}%
-                      </div>
+                      <Link
+                        href={`/subsidy-programs/${program.id}`}
+                        className="inline-flex items-center text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        <InformationCircleIcon className="h-4 w-4 mr-1" />
+                        詳細・資料を見る
+                      </Link>
                       <Link
                         href={`/dashboard/applications/new?program=${program.id}`}
                         className="inline-flex items-center text-brand-600 hover:text-brand-700 text-sm font-medium"
