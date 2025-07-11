@@ -1,0 +1,669 @@
+# Prometheus設定 - 決済システム専用監視
+# Team D: Infrastructure & Monitoring
+# Created: 2025-06-20
+# Purpose: ハイブリッド課金モデル実装における決済システムの詳細監視
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-payment-config
+  namespace: monitoring
+  labels:
+    app: prometheus
+    component: payment-monitoring
+    team: team-d
+    created-by: "hybrid-billing-implementation"
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+      external_labels:
+        cluster: 'ai-subsidy-payment-cluster'
+        team: 'team-d'
+
+    rule_files:
+      - "/etc/prometheus/rules/*.yml"
+
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets:
+              - alertmanager:9093
+
+    scrape_configs:
+      # 決済API監視（最高優先度）
+      - job_name: 'payment-api'
+        scrape_interval: 5s
+        scrape_timeout: 4s
+        metrics_path: '/metrics'
+        scheme: 'http'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: ['payment-system']
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: kubernetes_pod_name
+        metric_relabel_configs:
+          # 決済メトリクスの優先保持
+          - source_labels: [__name__]
+            regex: 'payment_.*'
+            action: keep
+          # 高精度でのデータ保持
+          - source_labels: [__name__]
+            regex: 'payment_(success_rate|latency|error_rate)'
+            target_label: __tmp_priority__
+            replacement: 'critical'
+
+      # Stripe Webhook監視
+      - job_name: 'stripe-webhooks'
+        scrape_interval: 10s
+        scrape_timeout: 8s
+        metrics_path: '/webhook/metrics'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: ['payment-system']
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: 'stripe-webhook-processor'
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape_webhook]
+            action: keep
+            regex: true
+
+      # データベース監視
+      - job_name: 'postgres-payment'
+        scrape_interval: 30s
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: ['payment-system']
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: 'postgres-exporter'
+
+      # Redis監視
+      - job_name: 'redis-payment'
+        scrape_interval: 30s
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: ['payment-system']
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: 'redis-exporter'
+
+      # インフラ監視
+      - job_name: 'kubernetes-nodes'
+        scrape_interval: 30s
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/${1}/proxy/metrics
+
+      # Kubelet監視
+      - job_name: 'kubernetes-kubelet'
+        scrape_interval: 30s
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/${1}/proxy/metrics
+
+      # Kubernetes API Server監視
+      - job_name: 'kubernetes-apiservers'
+        scrape_interval: 30s
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names: ['default']
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: default;kubernetes;https
+
+  payment_alerts.yml: |
+    groups:
+      - name: payment_system_critical
+        interval: 15s
+        rules:
+          # 決済成功率（99.5%閾値）- 最重要指標
+          - alert: PaymentSuccessRateCritical
+            expr: |
+              (
+                sum(rate(payment_transactions_total{status="success"}[2m])) /
+                sum(rate(payment_transactions_total[2m]))
+              ) * 100 < 99.5
+            for: 1m
+            labels:
+              severity: critical
+              team: team-d
+              impact: "revenue-loss"
+              priority: "P0"
+            annotations:
+              summary: "🚨 決済成功率が99.5%を下回りました"
+              description: |
+                過去2分間の決済成功率が {{ $value | humanizePercentage }} です。
+                目標値: 99.5%
+                現在値: {{ $value | humanizePercentage }}
+                失敗数: {{ with query "sum(rate(payment_transactions_total{status=\"failed\"}[2m])) * 120" }}{{ . | first | value | humanize }}{{ end }} 件/2分
+              user_impact: "ユーザーが決済を完了できません。収益に直接影響します。"
+              runbook_url: "https://docs.ai-subsidy.com/runbooks/payment-failure"
+              action_required: "即座に決済システムの健全性を確認してください"
+
+          # 決済レイテンシ（3秒閾値）
+          - alert: PaymentLatencyCritical
+            expr: |
+              histogram_quantile(0.99, 
+                sum(rate(payment_request_duration_seconds_bucket[2m])) by (le)
+              ) > 3
+            for: 1m
+            labels:
+              severity: critical
+              team: team-d
+              impact: "user-experience"
+              priority: "P0"
+            annotations:
+              summary: "🐌 決済処理のレイテンシが3秒を超えました"
+              description: |
+                99%ileレイテンシが {{ $value }} 秒です。
+                目標値: 3秒以内
+                現在値: {{ $value }} 秒
+                平均レイテンシ: {{ with query "avg(rate(payment_request_duration_seconds_sum[2m]) / rate(payment_request_duration_seconds_count[2m]))" }}{{ . | first | value | printf "%.2f" }}{{ end }} 秒
+              user_impact: "ユーザーの決済体験が著しく悪化しています"
+              action_required: "インフラリソースとアプリケーションパフォーマンスを確認"
+
+          # Webhook処理失敗（99.9%閾値）
+          - alert: WebhookProcessingCritical
+            expr: |
+              (
+                sum(rate(stripe_webhook_processed_total{status="success"}[2m])) /
+                sum(rate(stripe_webhook_processed_total[2m]))
+              ) * 100 < 99.9
+            for: 1m
+            labels:
+              severity: critical
+              team: team-d
+              impact: "data-consistency"
+              priority: "P0"
+            annotations:
+              summary: "🔗 Stripe Webhook処理の成功率が低下"
+              description: |
+                Webhook処理成功率が {{ $value | humanizePercentage }} です。
+                目標値: 99.9%
+                現在値: {{ $value | humanizePercentage }}
+                待機中: {{ with query "sum(stripe_webhook_queue_size)" }}{{ . | first | value | humanize }}{{ end }} 件
+              user_impact: "決済完了後の処理に遅延が発生し、ユーザーに混乱を与える可能性があります"
+              action_required: "Webhook処理システムとStripe APIの接続を確認"
+
+          # 決済システム停止
+          - alert: PaymentSystemDown
+            expr: |
+              up{job="payment-api"} == 0
+            for: 30s
+            labels:
+              severity: critical
+              team: team-d
+              impact: "system-outage"
+              priority: "P0"
+            annotations:
+              summary: "🛑 決済システムが停止しています"
+              description: "決済APIサービスにアクセスできません"
+              user_impact: "すべての決済処理が停止しています"
+              action_required: "システムの即座な復旧が必要です"
+
+      - name: payment_system_warning
+        interval: 30s
+        rules:
+          # 決済タイムアウト率
+          - alert: PaymentTimeoutRateHigh
+            expr: |
+              (
+                sum(rate(payment_transactions_total{status="timeout"}[5m])) /
+                sum(rate(payment_transactions_total[5m]))
+              ) * 100 > 1
+            for: 2m
+            labels:
+              severity: warning
+              team: team-d
+              impact: "user-experience"
+              priority: "P1"
+            annotations:
+              summary: "⏰ 決済タイムアウト率が高すぎます"
+              description: |
+                タイムアウト率が {{ $value | humanizePercentage }} です。
+                目標値: 1%以下
+                5分間の総決済数: {{ with query "sum(rate(payment_transactions_total[5m])) * 300" }}{{ . | first | value | humanize }}{{ end }} 件
+              user_impact: "決済完了までの時間が長くなっています"
+
+          # 高いリトライ率
+          - alert: PaymentRetryRateHigh
+            expr: |
+              (
+                sum(rate(payment_retries_total[5m])) /
+                sum(rate(payment_transactions_total[5m]))
+              ) * 100 > 5
+            for: 3m
+            labels:
+              severity: warning
+              team: team-d
+              impact: "system-stability"
+              priority: "P2"
+            annotations:
+              summary: "🔄 決済リトライ率が高すぎます"
+              description: |
+                リトライ率が {{ $value | humanizePercentage }} です。
+                目標値: 5%以下
+                外部サービス（Stripe）の安定性に問題がある可能性があります。
+              action_required: "Stripe APIの状態とネットワーク接続を確認"
+
+          # データベース接続プール枯渇
+          - alert: DatabaseConnectionPoolHigh
+            expr: |
+              (
+                sum(postgresql_connections_active) /
+                sum(postgresql_connections_max)
+              ) * 100 > 80
+            for: 5m
+            labels:
+              severity: warning
+              team: team-d
+              impact: "performance"
+              priority: "P2"
+            annotations:
+              summary: "🗄️ データベース接続プールの使用率が高すぎます"
+              description: |
+                接続プール使用率が {{ $value | humanizePercentage }} です。
+                アクティブ接続: {{ with query "sum(postgresql_connections_active)" }}{{ . | first | value | humanize }}{{ end }}
+                最大接続数: {{ with query "sum(postgresql_connections_max)" }}{{ . | first | value | humanize }}{{ end }}
+
+      - name: infrastructure_monitoring
+        interval: 60s
+        rules:
+          # リソース使用率監視
+          - alert: HighCPUUsage
+            expr: |
+              (
+                100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+              ) > 80
+            for: 5m
+            labels:
+              severity: warning
+              team: team-d
+              impact: "performance"
+              priority: "P2"
+            annotations:
+              summary: "💻 CPU使用率が高すぎます"
+              description: "インスタンス {{ $labels.instance }} のCPU使用率が {{ $value | humanizePercentage }} です"
+
+          - alert: HighMemoryUsage
+            expr: |
+              (
+                1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
+              ) * 100 > 85
+            for: 5m
+            labels:
+              severity: warning
+              team: team-d
+              impact: "performance"
+              priority: "P2"
+            annotations:
+              summary: "🧠 メモリ使用率が高すぎます"
+              description: |
+                インスタンス {{ $labels.instance }} のメモリ使用率が {{ $value | humanizePercentage }} です
+                利用可能メモリ: {{ with query "node_memory_MemAvailable_bytes{instance=\"" }}{{ $labels.instance }}{{ "\"}" }}{{ . | first | value | humanizeBytes }}{{ end }}
+
+          # ディスク使用率
+          - alert: HighDiskUsage
+            expr: |
+              (
+                1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)
+              ) * 100 > 85
+            for: 10m
+            labels:
+              severity: warning
+              team: team-d
+              impact: "storage"
+              priority: "P2"
+            annotations:
+              summary: "💾 ディスク使用率が高すぎます"
+              description: |
+                {{ $labels.instance }} の {{ $labels.mountpoint }} ディスク使用率が {{ $value | humanizePercentage }} です
+                利用可能容量: {{ with query "node_filesystem_avail_bytes{instance=\"" }}{{ $labels.instance }}{{ "\",mountpoint=\"" }}{{ $labels.mountpoint }}{{ "\"}" }}{{ . | first | value | humanizeBytes }}{{ end }}
+
+      - name: security_monitoring
+        interval: 30s
+        rules:
+          # 不審な決済パターン
+          - alert: SuspiciousPaymentPattern
+            expr: |
+              sum(rate(payment_transactions_total{amount_range="high"}[1m])) by (user_id) > 10
+            for: 1m
+            labels:
+              severity: warning
+              team: team-d
+              impact: "security"
+              priority: "P1"
+            annotations:
+              summary: "🚨 不審な決済パターンを検知"
+              description: |
+                ユーザー {{ $labels.user_id }} が1分間に {{ $value }} 回の高額決済を実行しています。
+                通常の決済パターンから大きく逸脱しています。
+              action_required: "アカウントのセキュリティ状況を確認し、必要に応じて一時制限を検討"
+
+          # 異常なエラー率
+          - alert: HighErrorRate
+            expr: |
+              (
+                sum(rate(http_requests_total{status=~"5.."}[5m])) /
+                sum(rate(http_requests_total[5m]))
+              ) * 100 > 5
+            for: 3m
+            labels:
+              severity: warning
+              team: team-d
+              impact: "system-stability"
+              priority: "P1"
+            annotations:
+              summary: "⚠️ HTTPエラー率が高すぎます"
+              description: |
+                5xxエラー率が {{ $value | humanizePercentage }} です。
+                システムに問題が発生している可能性があります。
+
+          # WAFブロック率上昇
+          - alert: HighWAFBlockRate
+            expr: |
+              (
+                sum(rate(waf_blocked_requests_total[5m])) /
+                sum(rate(waf_total_requests[5m]))
+              ) * 100 > 10
+            for: 3m
+            labels:
+              severity: warning
+              team: team-d
+              impact: "security"
+              priority: "P1"
+            annotations:
+              summary: "🛡️ WAFブロック率が上昇しています"
+              description: |
+                WAFによるブロック率が {{ $value | humanizePercentage }} です。
+                攻撃を受けている可能性があります。
+                過去5分間のブロック数: {{ with query "sum(rate(waf_blocked_requests_total[5m])) * 300" }}{{ . | first | value | humanize }}{{ end }} 件
+
+  recording_rules.yml: |
+    groups:
+      - name: payment_performance_recording
+        interval: 15s
+        rules:
+          # 決済成功率（高頻度記録）
+          - record: payment:success_rate:rate2m
+            expr: |
+              sum(rate(payment_transactions_total{status="success"}[2m])) /
+              sum(rate(payment_transactions_total[2m])) * 100
+
+          - record: payment:success_rate:rate5m
+            expr: |
+              sum(rate(payment_transactions_total{status="success"}[5m])) /
+              sum(rate(payment_transactions_total[5m])) * 100
+
+          # 決済レイテンシ分布
+          - record: payment:latency:p50:rate2m
+            expr: |
+              histogram_quantile(0.50, 
+                sum(rate(payment_request_duration_seconds_bucket[2m])) by (le)
+              )
+
+          - record: payment:latency:p95:rate2m
+            expr: |
+              histogram_quantile(0.95, 
+                sum(rate(payment_request_duration_seconds_bucket[2m])) by (le)
+              )
+
+          - record: payment:latency:p99:rate2m
+            expr: |
+              histogram_quantile(0.99, 
+                sum(rate(payment_request_duration_seconds_bucket[2m])) by (le)
+              )
+
+          # 決済量（RPM）
+          - record: payment:transactions:rpm
+            expr: |
+              sum(rate(payment_transactions_total[1m])) * 60
+
+          # 決済方法別成功率
+          - record: payment:success_rate_by_method:rate5m
+            expr: |
+              sum(rate(payment_transactions_total{status="success"}[5m])) by (payment_method) /
+              sum(rate(payment_transactions_total[5m])) by (payment_method) * 100
+
+      - name: infrastructure_recording
+        interval: 30s
+        rules:
+          # インスタンス別CPU使用率
+          - record: instance:cpu_usage:rate5m
+            expr: |
+              100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+
+          # インスタンス別メモリ使用率
+          - record: instance:memory_usage:ratio
+            expr: |
+              (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100
+
+          # アプリケーション別リクエスト率
+          - record: app:http_requests:rate5m
+            expr: |
+              sum(rate(http_requests_total[5m])) by (app, method, status)
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-payment-config
+  namespace: monitoring
+  labels:
+    app: alertmanager
+    component: payment-monitoring
+    team: team-d
+data:
+  alertmanager.yml: |
+    global:
+      smtp_smarthost: 'smtp.ai-subsidy.com:587'
+      smtp_from: 'alerts@ai-subsidy.com'
+      smtp_auth_username: 'alerts@ai-subsidy.com'
+      smtp_auth_password_file: '/etc/alertmanager/secrets/smtp_password'
+      resolve_timeout: 5m
+
+    templates:
+      - '/etc/alertmanager/templates/*.tmpl'
+
+    route:
+      group_by: ['alertname', 'cluster', 'service']
+      group_wait: 30s
+      group_interval: 2m
+      repeat_interval: 12h
+      receiver: 'team-d-default'
+      routes:
+        # 決済システム重要アラート（即座に通知）
+        - match_re:
+            alertname: 'Payment.*Critical|PaymentSystemDown'
+          receiver: 'payment-critical'
+          group_wait: 0s
+          repeat_interval: 2m
+          continue: true
+        
+        # セキュリティアラート
+        - match:
+            impact: security
+          receiver: 'security-alerts'
+          group_wait: 30s
+          repeat_interval: 30m
+        
+        # チームD向けアラート
+        - match:
+            team: team-d
+          receiver: 'team-d-alerts'
+          group_wait: 1m
+          repeat_interval: 4h
+
+    inhibit_rules:
+      # PaymentSystemDownが発生した場合、他の決済関連アラートを抑制
+      - source_match:
+          alertname: PaymentSystemDown
+        target_match_re:
+          alertname: 'Payment.*'
+        equal: ['cluster']
+      
+      # 重要度の高いアラートが出ている場合、低い重要度を抑制
+      - source_match:
+          severity: critical
+        target_match:
+          severity: warning
+        equal: ['alertname', 'cluster', 'service']
+
+    receivers:
+      - name: 'team-d-default'
+        email_configs:
+          - to: 'team-d@ai-subsidy.com'
+            subject: '[Team D] {{ .Status | toUpper }} - {{ .GroupLabels.alertname }}'
+            html: |
+              <h2>アラート通知</h2>
+              <p><strong>ステータス:</strong> {{ .Status | toUpper }}</p>
+              <p><strong>グループ:</strong> {{ .GroupLabels.alertname }}</p>
+              
+              {{ range .Alerts }}
+              <hr>
+              <h3>{{ .Annotations.summary }}</h3>
+              <p><strong>詳細:</strong> {{ .Annotations.description }}</p>
+              <p><strong>ユーザー影響:</strong> {{ .Annotations.user_impact }}</p>
+              <p><strong>発生時刻:</strong> {{ .StartsAt.Format "2006-01-02 15:04:05 JST" }}</p>
+              {{ if .Annotations.runbook_url }}
+              <p><strong>対応手順:</strong> <a href="{{ .Annotations.runbook_url }}">{{ .Annotations.runbook_url }}</a></p>
+              {{ end }}
+              {{ end }}
+
+      - name: 'payment-critical'
+        email_configs:
+          - to: 'critical@ai-subsidy.com'
+            subject: '[CRITICAL] 決済システム重要アラート - {{ .GroupLabels.alertname }}'
+            html: |
+              <h1 style="color: red;">🚨 緊急: 決済システム重要アラート</h1>
+              {{ range .Alerts }}
+              <h2>{{ .Annotations.summary }}</h2>
+              <p><strong>詳細:</strong> {{ .Annotations.description }}</p>
+              <p><strong>ユーザー影響:</strong> {{ .Annotations.user_impact }}</p>
+              <p><strong>要求アクション:</strong> {{ .Annotations.action_required }}</p>
+              <p><strong>発生時刻:</strong> {{ .StartsAt.Format "2006-01-02 15:04:05 JST" }}</p>
+              {{ end }}
+        
+        slack_configs:
+          - api_url_file: '/etc/alertmanager/secrets/slack_webhook'
+            channel: '#team-d-critical'
+            title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+            text: |
+              {{ range .Alerts }}
+              *{{ .Annotations.summary }}*
+              
+              *詳細:* {{ .Annotations.description }}
+              *ユーザー影響:* {{ .Annotations.user_impact }}
+              *要求アクション:* {{ .Annotations.action_required }}
+              
+              *発生時刻:* {{ .StartsAt.Format "15:04:05" }}
+              {{ if .Annotations.runbook_url }}*対応手順:* {{ .Annotations.runbook_url }}{{ end }}
+              {{ end }}
+            
+        pagerduty_configs:
+          - service_key_file: '/etc/alertmanager/secrets/pagerduty_key'
+            description: '{{ .GroupLabels.alertname }}: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+            details:
+              firing: '{{ .Alerts.Firing | len }}'
+              resolved: '{{ .Alerts.Resolved | len }}'
+              user_impact: '{{ range .Alerts }}{{ .Annotations.user_impact }}{{ end }}'
+
+      - name: 'team-d-alerts'
+        email_configs:
+          - to: 'team-d@ai-subsidy.com'
+            subject: '[Team D] {{ .Status | toUpper }} - {{ .GroupLabels.alertname }}'
+            html: |
+              <h2>Team D アラート通知</h2>
+              {{ range .Alerts }}
+              <h3>{{ .Annotations.summary }}</h3>
+              <p>{{ .Annotations.description }}</p>
+              {{ if .Annotations.user_impact }}<p><strong>ユーザー影響:</strong> {{ .Annotations.user_impact }}</p>{{ end }}
+              {{ end }}
+        
+        slack_configs:
+          - api_url_file: '/etc/alertmanager/secrets/slack_webhook'
+            channel: '#team-d-alerts'
+            title: '{{ .Status | toUpper }}: {{ .GroupLabels.alertname }}'
+            text: |
+              {{ range .Alerts }}
+              {{ .Annotations.summary }}
+              {{ .Annotations.description }}
+              {{ end }}
+
+      - name: 'security-alerts'
+        email_configs:
+          - to: 'security@ai-subsidy.com'
+            subject: '[SECURITY] {{ .GroupLabels.alertname }}'
+            html: |
+              <h2 style="color: orange;">🛡️ セキュリティアラート</h2>
+              {{ range .Alerts }}
+              <h3>{{ .Annotations.summary }}</h3>
+              <p>{{ .Annotations.description }}</p>
+              {{ if .Annotations.action_required }}<p><strong>推奨アクション:</strong> {{ .Annotations.action_required }}</p>{{ end }}
+              {{ end }}
+        
+        slack_configs:
+          - api_url_file: '/etc/alertmanager/secrets/slack_webhook'
+            channel: '#security-alerts'
+            title: '🛡️ Security Alert: {{ .GroupLabels.alertname }}'
+            text: |
+              {{ range .Alerts }}
+              *{{ .Annotations.summary }}*
+              {{ .Annotations.description }}
+              {{ if .Annotations.action_required }}*推奨アクション:* {{ .Annotations.action_required }}{{ end }}
+              {{ end }}

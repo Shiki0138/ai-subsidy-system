@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ai-subsidy-backend
+  namespace: ai-subsidy
+  labels:
+    app: ai-subsidy-backend
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ai-subsidy-frontend
+  namespace: ai-subsidy
+  labels:
+    app: ai-subsidy-frontend
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ai-subsidy
+  name: ai-subsidy-backend-role
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ai-subsidy-backend-rolebinding
+  namespace: ai-subsidy
+subjects:
+- kind: ServiceAccount
+  name: ai-subsidy-backend
+  namespace: ai-subsidy
+roleRef:
+  kind: Role
+  name: ai-subsidy-backend-role
+  apiGroup: rbac.authorization.k8s.io

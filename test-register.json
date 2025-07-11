@@ -1,0 +1,9 @@
+{
+  "email": "test@integration.com",
+  "password": "Test123!",
+  "companyName": "統合テスト株式会社",
+  "representativeName": "テスト太郎",
+  "businessType": "IT・ソフトウェア開発",
+  "foundedYear": 2020,
+  "employeeCount": 10
+}

@@ -1,0 +1,332 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # セキュリティスキャン
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+          
+  # フロントエンドテスト・ビルド
+  frontend-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './frontend/package-lock.json'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run linting
+        run: npm run lint
+        
+      - name: Run type checking
+        run: npm run type-check
+        
+      - name: Run unit tests
+        run: npm run test
+        
+      - name: Build application
+        run: npm run build
+        
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-build
+          path: ./frontend/.next/
+          
+  # バックエンドテスト・ビルド
+  backend-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './backend/package-lock.json'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Generate Prisma client
+        run: npx prisma generate
+        
+      - name: Run database migrations
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          
+      - name: Run linting
+        run: npm run lint
+        
+      - name: Run type checking
+        run: npm run type-check
+        
+      - name: Run unit tests
+        run: npm run test
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379
+          
+      - name: Run security audit
+        run: npm audit --audit-level moderate
+        
+  # AI Engineテスト・ビルド
+  ai-engine-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./ai-engine
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './ai-engine/package-lock.json'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run type checking
+        run: npm run type-check
+        
+      - name: Build AI engine
+        run: npm run build
+        
+  # Dockerイメージビルド・プッシュ
+  build-and-push:
+    needs: [security-scan, frontend-ci, backend-ci, ai-engine-ci]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        component: [frontend, backend]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.component }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+            
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.component }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          
+  # 開発環境デプロイ
+  deploy-development:
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+          
+      - name: Deploy to EKS Development
+        run: |
+          aws eks update-kubeconfig --region ap-northeast-1 --name ai-subsidy-development
+          kubectl apply -f kubernetes/namespace.yaml
+          kubectl apply -f kubernetes/configmaps.yaml
+          kubectl apply -f kubernetes/rbac.yaml
+          kubectl apply -f kubernetes/pvc.yaml
+          
+          # Update secrets with development values
+          kubectl create secret generic database-secret \
+            --from-literal=url="${{ secrets.DEV_DATABASE_URL }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          kubectl create secret generic redis-secret \
+            --from-literal=url="${{ secrets.DEV_REDIS_URL }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          kubectl create secret generic ai-keys-secret \
+            --from-literal=openai-key="${{ secrets.OPENAI_API_KEY }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          kubectl create secret generic backend-secrets \
+            --from-literal=jwt-secret="${{ secrets.JWT_SECRET }}" \
+            --from-literal=encryption-key="${{ secrets.ENCRYPTION_KEY }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Deploy applications
+          kubectl apply -f kubernetes/deployments/
+          kubectl apply -f kubernetes/ingress.yaml
+          
+          # Update images to latest
+          kubectl set image deployment/ai-subsidy-frontend frontend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:develop-${{ github.sha }} -n ai-subsidy
+          kubectl set image deployment/ai-subsidy-backend backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:develop-${{ github.sha }} -n ai-subsidy
+          
+          # Wait for rollout
+          kubectl rollout status deployment/ai-subsidy-frontend -n ai-subsidy
+          kubectl rollout status deployment/ai-subsidy-backend -n ai-subsidy
+          
+  # 本番デプロイ
+  deploy-production:
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+          
+      - name: Deploy to EKS Production
+        run: |
+          aws eks update-kubeconfig --region ap-northeast-1 --name ai-subsidy-production
+          
+          # Apply configurations
+          kubectl apply -f kubernetes/namespace.yaml
+          kubectl apply -f kubernetes/configmaps.yaml
+          kubectl apply -f kubernetes/rbac.yaml
+          kubectl apply -f kubernetes/pvc.yaml
+          
+          # Update secrets with production values
+          kubectl create secret generic database-secret \
+            --from-literal=url="${{ secrets.PROD_DATABASE_URL }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          kubectl create secret generic redis-secret \
+            --from-literal=url="${{ secrets.PROD_REDIS_URL }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          kubectl create secret generic ai-keys-secret \
+            --from-literal=openai-key="${{ secrets.OPENAI_API_KEY }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          kubectl create secret generic backend-secrets \
+            --from-literal=jwt-secret="${{ secrets.JWT_SECRET }}" \
+            --from-literal=encryption-key="${{ secrets.ENCRYPTION_KEY }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Deploy applications
+          kubectl apply -f kubernetes/deployments/
+          kubectl apply -f kubernetes/ingress.yaml
+          
+          # Update images to latest
+          kubectl set image deployment/ai-subsidy-frontend frontend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:latest -n ai-subsidy
+          kubectl set image deployment/ai-subsidy-backend backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:latest -n ai-subsidy
+          
+          # Wait for rollout
+          kubectl rollout status deployment/ai-subsidy-frontend -n ai-subsidy
+          kubectl rollout status deployment/ai-subsidy-backend -n ai-subsidy
+          
+      - name: Run smoke tests
+        run: |
+          # Wait for services to be ready
+          sleep 60
+          
+          # Get LoadBalancer URL
+          FRONTEND_URL=$(kubectl get ingress ai-subsidy-ingress -n ai-subsidy -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          API_URL=$(kubectl get ingress ai-subsidy-ingress -n ai-subsidy -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          
+          # Basic health checks
+          curl -f http://$API_URL/api/health || exit 1
+          curl -f http://$FRONTEND_URL/ || exit 1
+          
+          echo "✅ Smoke tests passed"
+          
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "🎉 Production deployment completed successfully!"
+          echo "Frontend: https://ai-subsidy.example.com"
+          echo "API: https://api.ai-subsidy.example.com"

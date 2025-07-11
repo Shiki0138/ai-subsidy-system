@@ -1,0 +1,102 @@
+[
+  {
+    "id": "1",
+    "userId": "1",
+    "projectTitle": "AI補助金申請システム",
+    "subsidyProgramId": "ai-development-subsidy",
+    "businessPlan": {
+      "companyOverview": "AI技術を活用したイノベーション企業として、補助金申請プロセスの効率化を目指します。",
+      "projectDescription": "AIを活用した補助金申請書の自動作成システムを開発し、中小企業の申請負担を軽減します。",
+      "marketAnalysis": "補助金申請市場は年々拡大しており、デジタル化のニーズが高まっています。",
+      "businessPlan": "段階的なシステム開発により、6ヶ月でMVPを完成させ、12ヶ月で本格運用を開始します。",
+      "expectedOutcomes": "申請時間の70%短縮、承認率の30%向上を見込んでいます。",
+      "budgetPlan": "開発費3,000万円、運用費1,000万円、マーケティング費1,000万円で総額5,000万円を計画しています。",
+      "implementation": "第1期：要件定義・設計（2ヶ月）、第2期：開発・テスト（4ヶ月）、第3期：運用開始（6ヶ月～）"
+    },
+    "requestedAmount": 5000000,
+    "status": "DRAFT",
+    "result": null,
+    "createdAt": "2025-06-12T13:51:25.281Z",
+    "updatedAt": "2025-06-12T13:51:25.281Z"
+  },
+  {
+    "id": "1",
+    "userId": "1",
+    "title": "テスト申請書",
+    "subsidyType": "itdounyu",
+    "companyInfo": {
+      "companyName": "テスト会社",
+      "industry": "IT",
+      "businessDescription": "テスト事業"
+    },
+    "businessPlan": "テスト事業計画",
+    "projectDescription": "テストプロジェクト",
+    "budget": "500万円",
+    "schedule": "6ヶ月",
+    "expectedResults": "効率化",
+    "status": "DRAFT",
+    "createdAt": "2025-06-13T15:28:41.204Z",
+    "updatedAt": "2025-06-13T15:28:41.204Z",
+    "submittedAt": null
+  },
+  {
+    "id": "1",
+    "userId": "1",
+    "title": "業務効率化申請",
+    "subsidyType": "itdounyu",
+    "companyInfo": {
+      "companyName": "デモ会社",
+      "industry": "IT",
+      "employeeCount": "10名"
+    },
+    "businessPlan": "AI技術を活用した業務効率化システムの導入により、生産性を30%向上させる計画です。",
+    "projectDescription": "",
+    "budget": "",
+    "schedule": "",
+    "expectedResults": "",
+    "status": "DRAFT",
+    "createdAt": "2025-06-15T08:33:49.887Z",
+    "updatedAt": "2025-06-15T08:33:49.888Z",
+    "submittedAt": null
+  },
+  {
+    "id": "1",
+    "userId": "1",
+    "title": "PDF機能完全テスト申請書",
+    "subsidyType": "itdounyu",
+    "companyInfo": {
+      "companyName": "PDF Test Corp",
+      "industry": "IT・ソフトウェア",
+      "businessDescription": "PDF生成システムの開発・運用"
+    },
+    "businessPlan": "PDF生成機能の完全動作確認用申請書として作成",
+    "projectDescription": "PDF生成機能の動作確認",
+    "budget": "設備投資: 1000万円",
+    "schedule": "12ヶ月間",
+    "expectedResults": "PDF生成機能100%動作",
+    "status": "DRAFT",
+    "createdAt": "2025-06-15T22:24:40.206Z",
+    "updatedAt": "2025-06-15T22:24:40.206Z",
+    "submittedAt": null
+  },
+  {
+    "id": "1",
+    "userId": "1",
+    "title": "メール機能テスト申請書",
+    "subsidyType": "itdounyu",
+    "companyInfo": {
+      "companyName": "Test Corp",
+      "industry": "IT",
+      "businessDescription": "メール機能テスト"
+    },
+    "businessPlan": "メール送信機能の動作確認",
+    "projectDescription": "メール機能テスト",
+    "budget": "100万円",
+    "schedule": "1ヶ月",
+    "expectedResults": "メール送信成功",
+    "status": "DRAFT",
+    "createdAt": "2025-06-15T23:26:14.638Z",
+    "updatedAt": "2025-06-15T23:26:14.638Z",
+    "submittedAt": null
+  }
+]

@@ -1,0 +1,50 @@
+[
+  {
+    "id": "1",
+    "email": "aitest1749736285247@example.com",
+    "password": "Test123!",
+    "companyName": "AI Test Company",
+    "representativeName": "AI Tester",
+    "phone": "090-0000-1111",
+    "address": null,
+    "createdAt": "2025-06-12T13:51:25.260Z",
+    "updatedAt": "2025-06-12T13:51:25.260Z",
+    "lastLoginAt": null
+  },
+  {
+    "id": "1",
+    "email": "test@test.com",
+    "password": "password123",
+    "companyName": "Test Company",
+    "representativeName": "Test User",
+    "phone": "090-1234-5678",
+    "address": null,
+    "createdAt": "2025-06-12T14:09:32.036Z",
+    "updatedAt": "2025-06-12T14:09:32.036Z",
+    "lastLoginAt": "2025-06-12T14:09:42.926Z"
+  },
+  {
+    "id": "1",
+    "email": "demo@demo.com",
+    "password": "demo123",
+    "companyName": "Demo Company",
+    "representativeName": "Demo User",
+    "phone": "090-0000-0000",
+    "address": null,
+    "createdAt": "2025-06-12T14:20:40.641Z",
+    "updatedAt": "2025-06-12T14:20:40.641Z",
+    "lastLoginAt": "2025-06-16T05:13:44.205Z"
+  },
+  {
+    "id": "1",
+    "email": "pdf-test@example.com",
+    "password": "$2b$10$UoGxoEBeGNeTLyiZgGEOrey8Cottq8QGDm1ExdniQP4S1CTXh2m1C",
+    "companyName": "PDF Test Corp",
+    "representativeName": "PDF Test User",
+    "phone": null,
+    "address": null,
+    "createdAt": "2025-06-15T22:23:10.342Z",
+    "updatedAt": "2025-06-15T22:23:10.342Z",
+    "lastLoginAt": "2025-06-15T23:26:14.589Z"
+  }
+]

@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # PostgreSQL データベース
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-subsidy-postgres-test
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ai_subsidy_test
+      POSTGRES_USER: ai_user
+      POSTGRES_PASSWORD: ai_password_123
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
+    ports:
+      - "5433:5432"  # ローカルポート5433で接続
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      - ./backend/prisma/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_user -d ai_subsidy_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-subsidy-network
+
+  # Redis セッションストア
+  redis:
+    image: redis:7-alpine
+    container_name: ai-subsidy-redis-test
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass redis_password_123
+    ports:
+      - "6380:6379"  # ローカルポート6380で接続
+    volumes:
+      - redis_test_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis_password_123", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-subsidy-network
+
+  # pgAdmin (データベース管理用)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ai-subsidy-pgadmin-test
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@aisubsidy.local
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_test_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ai-subsidy-network
+
+  # Redis Commander (Redis管理用)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: ai-subsidy-redis-commander-test
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: "local:redis:6379:1:redis_password_123"
+      HTTP_USER: admin
+      HTTP_PASSWORD: admin123
+    ports:
+      - "8081:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - ai-subsidy-network
+
+volumes:
+  postgres_test_data:
+    driver: local
+  redis_test_data:
+    driver: local
+  pgadmin_test_data:
+    driver: local
+
+networks:
+  ai-subsidy-network:
+    driver: bridge
+    name: ai-subsidy-test-network

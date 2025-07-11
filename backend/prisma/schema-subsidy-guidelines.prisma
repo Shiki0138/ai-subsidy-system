@@ -1,0 +1,152 @@
+// 補助金募集要項スキーマ
+
+model SubsidyProgram {
+  id                    String                @id @default(cuid())
+  code                  String                @unique // 例: "jizokukahojokin_2024"
+  name                  String                // 補助金名称
+  fullName              String?               // 正式名称
+  category              String                // カテゴリ（一般型、特別枠等）
+  organizationName      String                // 実施機関名
+  
+  // 募集期間
+  applicationStart      DateTime?
+  applicationEnd        DateTime?
+  
+  // 補助内容
+  minAmount             Int                   // 最小補助額
+  maxAmount             Int                   // 最大補助額
+  subsidyRate           Float                 // 補助率（例: 0.66 = 2/3）
+  
+  // 対象者要件
+  targetBusinessSize    String[]              // 対象事業規模
+  targetIndustries      String[]              // 対象業種
+  targetRegions         String[]              // 対象地域
+  
+  isActive              Boolean               @default(true)
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  
+  guidelines            SubsidyGuideline[]
+  requirements          ApplicationRequirement[]
+  evaluationCriteria    EvaluationCriterion[]
+  successCases          SuccessCase[]
+  applications          Application[]
+}
+
+// 募集要項詳細
+model SubsidyGuideline {
+  id                    String                @id @default(cuid())
+  subsidyProgramId      String
+  subsidyProgram        SubsidyProgram        @relation(fields: [subsidyProgramId], references: [id])
+  
+  version               String                // 要項バージョン
+  fiscalYear            Int                   // 年度
+  round                 Int?                  // 募集回次
+  
+  // 募集要項の構造化データ
+  purpose               String                @db.Text // 事業目的
+  targetProjects        String[]              // 対象事業
+  eligibleExpenses      Json                  // 補助対象経費
+  ineligibleExpenses    Json                  // 補助対象外経費
+  
+  // 申請要件
+  applicationConditions Json                  // 申請条件詳細
+  requiredDocuments     Json                  // 必要書類リスト
+  
+  // 審査情報
+  selectionMethod       String                // 選定方法
+  reviewProcess         Json                  // 審査プロセス
+  
+  // 重要ポイント（AI分析用）
+  keyPoints             Json                  // 重要ポイント
+  commonMistakes        String[]              // よくある間違い
+  successFactors        String[]              // 成功要因
+  
+  // 公式文書
+  officialUrl           String?               // 公式URL
+  pdfUrl                String?               // PDF URL
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  
+  @@unique([subsidyProgramId, version])
+}
+
+// 申請要件
+model ApplicationRequirement {
+  id                    String                @id @default(cuid())
+  subsidyProgramId      String
+  subsidyProgram        SubsidyProgram        @relation(fields: [subsidyProgramId], references: [id])
+  
+  category              String                // 要件カテゴリ
+  requirement           String                // 要件内容
+  isMandatory           Boolean               @default(true)
+  checkPoints           String[]              // チェックポイント
+  
+  // AI分析用メタデータ
+  importance            Int                   // 重要度 (1-10)
+  evaluationWeight      Float?                // 評価ウェイト
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+}
+
+// 評価基準
+model EvaluationCriterion {
+  id                    String                @id @default(cuid())
+  subsidyProgramId      String
+  subsidyProgram        SubsidyProgram        @relation(fields: [subsidyProgramId], references: [id])
+  
+  category              String                // 評価カテゴリ
+  criterion             String                // 評価基準
+  description           String                @db.Text
+  weight                Float                 // 評価ウェイト
+  
+  // 評価ポイント
+  evaluationPoints      Json                  // 詳細な評価ポイント
+  scoringGuideline      String?               @db.Text // スコアリングガイドライン
+  
+  // AI用ヒント
+  keywords              String[]              // キーワード
+  positiveIndicators    String[]              // ポジティブ指標
+  negativeIndicators    String[]              // ネガティブ指標
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+}
+
+// 採択事例
+model SuccessCase {
+  id                    String                @id @default(cuid())
+  subsidyProgramId      String
+  subsidyProgram        SubsidyProgram        @relation(fields: [subsidyProgramId], references: [id])
+  
+  fiscalYear            Int                   // 採択年度
+  companyType           String                // 企業タイプ
+  industry              String                // 業種
+  projectTitle          String                // 事業タイトル
+  
+  // 事業内容
+  projectSummary        String                @db.Text
+  businessPlan          Json                  // 事業計画概要
+  
+  // 採択情報
+  requestedAmount       Int                   // 申請額
+  approvedAmount        Int                   // 採択額
+  evaluationScore       Float?                // 評価スコア
+  
+  // 成功要因分析
+  successFactors        String[]              // 成功要因
+  keyPhrases            String[]              // キーフレーズ
+  strongPoints          Json                  // 強みポイント
+  
+  // 学習用データ
+  applicationContent    Json?                 // 申請内容（匿名化済み）
+  reviewComments        Json?                 // 審査コメント（利用可能な場合）
+  
+  isPublic              Boolean               @default(false)
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+}

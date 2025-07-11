@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Static HTML Test</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .status { 
+            padding: 10px 20px; 
+            background: #10b981; 
+            color: white; 
+            border-radius: 5px; 
+            display: inline-block;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 Next.js Static Files OK!</h1>
+        <div class="status">✅ publicフォルダは正常に配信されています</div>
+        <p>このページが表示される場合、Next.jsサーバーは動作しています。</p>
+        <p>React/Next.jsページが表示されない場合は、JavaScriptエラーの可能性があります。</p>
+    </div>
+</body>
+</html>

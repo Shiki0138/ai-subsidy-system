@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>補助金申請が変わる。あなたの事業が変わる。| AI補助金申請システム</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            color: #1a1a1a;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        
+        /* スムーズスクロール */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        /* ヒーローセクション */
+        .hero {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            width: 150%;
+            height: 150%;
+            background: radial-gradient(circle at 30% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+            animation: float 20s infinite ease-in-out;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translate(-10%, -10%) rotate(0deg); }
+            50% { transform: translate(10%, 10%) rotate(180deg); }
+        }
+        
+        .hero-content {
+            text-align: center;
+            max-width: 900px;
+            padding: 0 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .hero h1 {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 900;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: fadeInUp 1s ease-out;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .hero-subtitle {
+            font-size: clamp(1.2rem, 3vw, 1.8rem);
+            color: #4a5568;
+            margin-bottom: 3rem;
+            font-weight: 300;
+            animation: fadeInUp 1s ease-out 0.3s both;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            padding: 1.2rem 3rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            animation: fadeInUp 1s ease-out 0.6s both;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+        }
+        
+        /* 驚きの数字セクション */
+        .shocking-numbers {
+            padding: 100px 20px;
+            background: #ffffff;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: #2d3748;
+        }
+        
+        .section-subtitle {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #718096;
+            margin-bottom: 4rem;
+        }
+        
+        .numbers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 4rem;
+        }
+        
+        .number-card {
+            background: #f7fafc;
+            padding: 2.5rem;
+            border-radius: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .number-card:hover {
+            transform: translateY(-5px);
+            border-color: #e2e8f0;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .big-number {
+            font-size: 3.5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        
+        .number-label {
+            font-size: 1.1rem;
+            color: #4a5568;
+            font-weight: 500;
+        }
+        
+        /* 痛みポイントセクション */
+        .pain-points {
+            padding: 100px 20px;
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        }
+        
+        .pain-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        
+        .pain-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .pain-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .pain-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 1rem;
+        }
+        
+        .pain-description {
+            color: #4a5568;
+            line-height: 1.8;
+        }
+        
+        /* ソリューションセクション */
+        .solution {
+            padding: 100px 20px;
+            background: #ffffff;
+        }
+        
+        .solution-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+            margin-top: 4rem;
+        }
+        
+        @media (max-width: 768px) {
+            .solution-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .solution-text h3 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 1.5rem;
+        }
+        
+        .solution-text p {
+            font-size: 1.1rem;
+            color: #4a5568;
+            margin-bottom: 1.5rem;
+            line-height: 1.8;
+        }
+        
+        .feature-list {
+            list-style: none;
+            margin-top: 2rem;
+        }
+        
+        .feature-list li {
+            padding: 0.8rem 0;
+            font-size: 1.1rem;
+            color: #2d3748;
+            display: flex;
+            align-items: center;
+        }
+        
+        .feature-list li::before {
+            content: '✅';
+            margin-right: 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .solution-visual {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            padding: 3rem;
+            color: white;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .solution-visual::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+            animation: rotate 30s linear infinite;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        /* デモセクション */
+        .demo {
+            padding: 100px 20px;
+            background: #f7fafc;
+        }
+        
+        .demo-container {
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        .demo-screen {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            padding: 3rem;
+            margin-top: 3rem;
+        }
+        
+        .demo-step {
+            margin-bottom: 3rem;
+            opacity: 0;
+            animation: fadeIn 1s ease-out forwards;
+        }
+        
+        .demo-step:nth-child(1) { animation-delay: 0.2s; }
+        .demo-step:nth-child(2) { animation-delay: 0.4s; }
+        .demo-step:nth-child(3) { animation-delay: 0.6s; }
+        
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+        
+        .step-number {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            line-height: 40px;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+        
+        .step-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+        }
+        
+        .step-description {
+            color: #4a5568;
+            font-size: 1.1rem;
+        }
+        
+        /* 実績セクション */
+        .achievements {
+            padding: 100px 20px;
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        }
+        
+        .achievement-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        
+        .achievement-card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .achievement-amount {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #22c55e;
+            margin-bottom: 0.5rem;
+        }
+        
+        .achievement-type {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 1rem;
+        }
+        
+        .achievement-detail {
+            color: #4a5568;
+            font-size: 0.95rem;
+        }
+        
+        /* CTAセクション */
+        .final-cta {
+            padding: 100px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+        }
+        
+        .final-cta h2 {
+            font-size: 3rem;
+            font-weight: 900;
+            margin-bottom: 1.5rem;
+        }
+        
+        .final-cta p {
+            font-size: 1.3rem;
+            margin-bottom: 3rem;
+            opacity: 0.9;
+        }
+        
+        .cta-white {
+            background: white;
+            color: #667eea;
+            padding: 1.2rem 3rem;
+            display: inline-block;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .cta-white:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* 保証セクション */
+        .guarantee {
+            padding: 50px 20px;
+            background: #1a202c;
+            color: white;
+            text-align: center;
+        }
+        
+        .guarantee-badge {
+            display: inline-block;
+            padding: 0.5rem 2rem;
+            background: #22c55e;
+            border-radius: 30px;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+        
+        /* レスポンシブ */
+        @media (max-width: 768px) {
+            .numbers-grid,
+            .pain-grid,
+            .achievement-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .section-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ヒーローセクション -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>補助金申請の常識を、<br>AIが覆します。</h1>
+            <p class="hero-subtitle">
+                もう、100万円の申請代行費用は必要ありません。<br>
+                最大1.5億円の補助金を、自分で申請できる時代が来ました。
+            </p>
+            <a href="#shocking-truth" class="cta-button">衝撃の事実を見る →</a>
+        </div>
+    </section>
+
+    <!-- 驚きの数字 -->
+    <section id="shocking-truth" class="shocking-numbers">
+        <div class="container">
+            <h2 class="section-title">知っていましたか？</h2>
+            <p class="section-subtitle">補助金申請の衝撃的な真実</p>
+            
+            <div class="numbers-grid">
+                <div class="number-card">
+                    <div class="big-number">87%</div>
+                    <div class="number-label">の中小企業が補助金を<br>「面倒」で諦めている</div>
+                </div>
+                <div class="number-card">
+                    <div class="big-number">100万円〜</div>
+                    <div class="number-label">申請代行の平均費用<br>（成功報酬20%含む）</div>
+                </div>
+                <div class="number-card">
+                    <div class="big-number">3ヶ月</div>
+                    <div class="number-label">通常の申請書作成期間<br>（外注の場合）</div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 4rem;">
+                <p style="font-size: 1.5rem; font-weight: 700; color: #e53e3e;">
+                    でも、もしAIが5分で申請書を作成できたら？
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 痛みポイント -->
+    <section class="pain-points">
+        <div class="container">
+            <h2 class="section-title" style="color: white;">こんな悩み、ありませんか？</h2>
+            
+            <div class="pain-grid">
+                <div class="pain-card">
+                    <div class="pain-icon">😩</div>
+                    <h3 class="pain-title">申請書の書き方が分からない</h3>
+                    <p class="pain-description">
+                        「事業計画書」「収支計画」「効果測定」...<br>
+                        専門用語だらけで、何から手をつければいいか分からない。
+                    </p>
+                </div>
+                <div class="pain-card">
+                    <div class="pain-icon">💸</div>
+                    <h3 class="pain-title">代行費用が高すぎる</h3>
+                    <p class="pain-description">
+                        着手金30万円＋成功報酬20％...<br>
+                        1000万円の補助金なら、300万円も取られてしまう。
+                    </p>
+                </div>
+                <div class="pain-card">
+                    <div class="pain-icon">⏰</div>
+                    <h3 class="pain-title">締切に間に合わない</h3>
+                    <p class="pain-description">
+                        申請書作成に2〜3ヶ月かかると言われ、<br>
+                        気づいたら締切まで時間がない...
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ソリューション -->
+    <section class="solution">
+        <div class="container">
+            <h2 class="section-title">AIが、すべてを解決します</h2>
+            <p class="section-subtitle">最新のAI技術で、補助金申請が驚くほど簡単に</p>
+            
+            <div class="solution-content">
+                <div class="solution-text">
+                    <h3>たった5つの質問に答えるだけ</h3>
+                    <p>
+                        事業内容、従業員数、売上高など、基本的な情報を入力するだけで、
+                        AIが最適な補助金を選定し、採択率の高い申請書を自動生成します。
+                    </p>
+                    <ul class="feature-list">
+                        <li>専門知識不要 - AIが専門用語を使って作成</li>
+                        <li>最短5分 - 質問に答えるだけで完成</li>
+                        <li>採択率UP - 過去の成功事例を学習済み</li>
+                        <li>完全日本語対応 - 各省庁の最新様式に対応</li>
+                    </ul>
+                </div>
+                <div class="solution-visual">
+                    <h3 style="font-size: 2.5rem; margin-bottom: 1rem;">対応補助金</h3>
+                    <p style="font-size: 1.5rem; margin-bottom: 2rem;">最大1.5億円</p>
+                    <p style="font-size: 1.2rem;">
+                        事業再構築補助金<br>
+                        ものづくり補助金<br>
+                        IT導入補助金<br>
+                        小規模事業者持続化補助金<br>
+                        他1700種類以上
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- デモ -->
+    <section class="demo">
+        <div class="demo-container">
+            <h2 class="section-title">実際の申請プロセス</h2>
+            <p class="section-subtitle">こんなに簡単！3ステップで申請書完成</p>
+            
+            <div class="demo-screen">
+                <div class="demo-step">
+                    <div class="step-number">1</div>
+                    <h3 class="step-title">基本情報を入力</h3>
+                    <p class="step-description">
+                        会社名、事業内容、従業員数など、知っている情報を入力するだけ
+                    </p>
+                </div>
+                <div class="demo-step">
+                    <div class="step-number">2</div>
+                    <h3 class="step-title">AIが最適な補助金を提案</h3>
+                    <p class="step-description">
+                        1700種類以上の補助金から、あなたの事業に最適なものをAIが選定
+                    </p>
+                </div>
+                <div class="demo-step">
+                    <div class="step-number">3</div>
+                    <h3 class="step-title">申請書を自動生成</h3>
+                    <p class="step-description">
+                        各省庁の最新様式に完全対応した申請書が、わずか5分で完成
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 実績 -->
+    <section class="achievements">
+        <div class="container">
+            <h2 class="section-title">導入企業の実績</h2>
+            <p class="section-subtitle">AIで申請した企業の驚きの結果</p>
+            
+            <div class="achievement-cards">
+                <div class="achievement-card">
+                    <div class="achievement-amount">1.5億円</div>
+                    <div class="achievement-type">事業再構築補助金</div>
+                    <p class="achievement-detail">
+                        製造業A社<br>
+                        申請書作成時間：3時間<br>
+                        代行費用削減額：3,000万円
+                    </p>
+                </div>
+                <div class="achievement-card">
+                    <div class="achievement-amount">3,000万円</div>
+                    <div class="achievement-type">ものづくり補助金</div>
+                    <p class="achievement-detail">
+                        IT企業B社<br>
+                        申請書作成時間：1時間<br>
+                        代行費用削減額：600万円
+                    </p>
+                </div>
+                <div class="achievement-card">
+                    <div class="achievement-amount">450万円</div>
+                    <div class="achievement-type">IT導入補助金</div>
+                    <p class="achievement-detail">
+                        小売業C社<br>
+                        申請書作成時間：30分<br>
+                        代行費用削減額：90万円
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 最終CTA -->
+    <section class="final-cta">
+        <div class="container">
+            <h2>今すぐ、補助金申請を始めましょう</h2>
+            <p>
+                次の締切まで、あと14日<br>
+                今なら間に合います
+            </p>
+            <a href="#" class="cta-white">無料で試してみる</a>
+        </div>
+    </section>
+
+    <!-- 保証 -->
+    <section class="guarantee">
+        <div class="container">
+            <div class="guarantee-badge">返金保証</div>
+            <p style="font-size: 1.1rem; margin-bottom: 1rem;">
+                もし申請書の品質にご満足いただけない場合は、<br>
+                全額返金いたします。
+            </p>
+            <p style="opacity: 0.8;">
+                ※本サービスは申請書作成支援ツールです。採択を保証するものではありません。
+            </p>
+        </div>
+    </section>
+
+    <script>
+        // スクロールアニメーション
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // アニメーション対象要素
+        document.querySelectorAll('.number-card, .pain-card, .achievement-card').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            el.style.transition = 'all 0.6s ease-out';
+            observer.observe(el);
+        });
+
+        // カウントアップアニメーション
+        const animateValue = (element, start, end, duration) => {
+            const startTimestamp = Date.now();
+            const step = (timestamp) => {
+                const progress = Math.min((Date.now() - startTimestamp) / duration, 1);
+                const value = Math.floor(progress * (end - start) + start);
+                element.textContent = value + (element.dataset.suffix || '');
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        };
+
+        // 数字のアニメーション
+        const numberObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && !entry.target.dataset.animated) {
+                    entry.target.dataset.animated = 'true';
+                    const text = entry.target.textContent;
+                    const number = parseInt(text.replace(/[^0-9]/g, ''));
+                    if (!isNaN(number)) {
+                        entry.target.dataset.suffix = text.replace(/[0-9]/g, '');
+                        animateValue(entry.target, 0, number, 1500);
+                    }
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.big-number').forEach(el => {
+            numberObserver.observe(el);
+        });
+    </script>
+</body>
+</html>

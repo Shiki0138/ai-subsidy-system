@@ -1,0 +1,49 @@
+FROM node:20-alpine AS base
+
+# 依存関係インストール
+FROM base AS deps
+WORKDIR /app
+COPY package*.json ./
+COPY frontend/package*.json ./frontend/
+COPY backend/package*.json ./backend/
+RUN npm ci --only=production
+
+# フロントエンドビルド
+FROM base AS frontend-builder
+WORKDIR /app/frontend
+COPY frontend/ .
+RUN npm ci && npm run build
+
+# バックエンドビルド  
+FROM base AS backend-builder
+WORKDIR /app/backend
+COPY backend/ .
+RUN npm ci && npm run build
+
+# 本番イメージ
+FROM base AS runner
+WORKDIR /app
+
+# セキュリティ: 非rootユーザー
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# 必要ファイルコピー
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=frontend-builder /app/frontend/.next ./frontend/.next
+COPY --from=frontend-builder /app/frontend/public ./frontend/public
+COPY --from=backend-builder /app/backend/dist ./backend/dist
+
+# 権限設定
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+
+EXPOSE 3000
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# ヘルスチェック
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/api/health || exit 1
+
+CMD ["npm", "start"]

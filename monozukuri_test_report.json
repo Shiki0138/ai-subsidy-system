@@ -1,0 +1,63 @@
+{
+  "test_timestamp": "2025-06-23T16:46:53.198378",
+  "test_summary": {
+    "total_test_cases": 3,
+    "system_components": [
+      "Backend API",
+      "AI Engine",
+      "Frontend Integration"
+    ],
+    "test_objectives": [
+      "簡単入力での申請書自動生成",
+      "高い採択確率の実現",
+      "システム統合の確認"
+    ]
+  },
+  "test_cases": [
+    {
+      "name": "CNC工作機械導入テスト",
+      "data": {
+        "equipment_type": "CNC工作機械",
+        "problem_to_solve": "手作業による加工精度のばらつきと生産効率の低下",
+        "productivity_improvement": 35,
+        "investment_amount": 8000000,
+        "implementation_period": 6,
+        "industry": "金属加工",
+        "company_size": 25
+      },
+      "expected_adoption_rate": 80
+    },
+    {
+      "name": "IoTシステム導入テスト",
+      "data": {
+        "equipment_type": "IoTセンサー・システム",
+        "problem_to_solve": "設備の稼働状況が把握できず、予防保全ができていない",
+        "productivity_improvement": 20,
+        "investment_amount": 3000000,
+        "implementation_period": 4,
+        "industry": "製造業",
+        "company_size": 15
+      },
+      "expected_adoption_rate": 70
+    },
+    {
+      "name": "協働ロボット導入テスト",
+      "data": {
+        "equipment_type": "協働ロボット",
+        "problem_to_solve": "人手不足による生産能力の制約と作業者の負担増加",
+        "productivity_improvement": 40,
+        "investment_amount": 12000000,
+        "implementation_period": 8,
+        "industry": "製造業",
+        "company_size": 30
+      },
+      "expected_adoption_rate": 85
+    }
+  ],
+  "system_requirements": {
+    "min_adoption_rate": 70,
+    "min_quality_score": 75,
+    "max_generation_time": 60,
+    "required_sections": 9
+  }
+}
