@@ -64,7 +64,7 @@ prisma/migrations/dev/
 *.crt
 
 # Package manager files
-package-lock.json
+# package-lock.json (CI/CDに必要なので含める)
 yarn.lock
 pnpm-lock.yaml
 
@@ -136,3 +136,4 @@ anthropic-api-key.txt
 /backend/logs/
 /backend/temp/
 /frontend/.env.production
+.vercel
