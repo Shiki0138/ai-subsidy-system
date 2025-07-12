@@ -6,7 +6,7 @@
   "outputDirectory": ".next",
   "functions": {
     "app/api/**/*.ts": {
-      "runtime": "nodejs18.x"
+      "maxDuration": 60
     }
   },
   "rewrites": [
@@ -14,19 +14,5 @@
       "source": "/api/(.*)",
       "destination": "/api/$1"
     }
-  ],
-  "env": {
-    "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
-    "NEXT_PUBLIC_GEMINI_API_KEY": "@gemini_api_key",
-    "NEXT_PUBLIC_CORPORATE_NUMBER_API_KEY": "@corporate_number_api_key"
-  },
-  "build": {
-    "env": {
-      "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
-      "NEXT_PUBLIC_GEMINI_API_KEY": "@gemini_api_key",
-      "NEXT_PUBLIC_CORPORATE_NUMBER_API_KEY": "@corporate_number_api_key"
-    }
-  }
+  ]
 }

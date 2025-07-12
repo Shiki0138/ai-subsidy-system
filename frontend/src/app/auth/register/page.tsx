@@ -8,6 +8,8 @@ export const metadata: Metadata = {
   description: 'AI補助金申請システムの無料アカウントを作成して、革新的な申請書自動生成機能をお試しください。',
 }
 
+export const dynamic = 'force-dynamic'
+
 export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">

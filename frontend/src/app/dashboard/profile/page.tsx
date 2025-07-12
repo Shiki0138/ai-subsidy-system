@@ -7,6 +7,8 @@ export const metadata: Metadata = {
   description: 'ユーザープロフィールと企業情報を管理します。',
 }
 
+export const dynamic = 'force-dynamic'
+
 export default function ProfilePage() {
   return (
     <Suspense fallback={<div>Loading...</div>}>

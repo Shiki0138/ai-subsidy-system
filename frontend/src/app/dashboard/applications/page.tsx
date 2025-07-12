@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: '作成済み申請書の一覧表示・管理ページです。',
 }
 
+export const dynamic = 'force-dynamic'
+
 export default function ApplicationsListPage() {
   return <ApplicationsListClient />
 }
