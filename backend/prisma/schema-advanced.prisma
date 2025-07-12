@@ -1,0 +1,158 @@
+// 高度な補助金システム用スキーマ追加
+
+model SubsidyProgramExtended {
+  id                  String   @id @default(cuid())
+  name                String
+  type                String
+  organization        String
+  description         String?
+  
+  // 申請要件
+  requirements        Json     @default("{}")
+  evaluationCriteria  Json     @default("{}")
+  requiredDocuments   Json     @default("[]")
+  
+  // フォーム設定
+  formTemplate        Json     @default("{}")
+  questionFlow        Json     @default("[]")
+  
+  // 採択基準
+  scoringCriteria     Json     @default("{}")
+  successFactors      Json     @default("[]")
+  
+  // 締切・予算情報
+  deadlineInfo        Json?
+  budgetRange         Json?
+  
+  // システム管理
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  // リレーション
+  questionTemplates   QuestionTemplate[]
+  applicationTemplates ApplicationTemplate[]
+  
+  @@map("subsidy_programs_extended")
+}
+
+model QuestionTemplate {
+  id                  String   @id @default(cuid())
+  subsidyId           String
+  category            String
+  questionText        String
+  questionType        String   // text, select, number, file, textarea, url
+  
+  // 質問設定
+  validationRules     Json     @default("{}")
+  followupConditions  Json     @default("{}")
+  aiContext           String?
+  
+  // 表示制御
+  priority            Int      @default(1)
+  isRequired          Boolean  @default(false)
+  displayCondition    Json     @default("{}")
+  
+  createdAt           DateTime @default(now())
+  
+  // リレーション
+  subsidy             SubsidyProgramExtended @relation(fields: [subsidyId], references: [id], onDelete: Cascade)
+  userAnswers         UserAnswer[]
+  
+  @@map("question_templates")
+}
+
+model ApplicationTemplate {
+  id                  String   @id @default(cuid())
+  subsidyId           String
+  sectionName         String
+  sectionOrder        Int
+  
+  // コンテンツ設定
+  contentTemplate     String
+  aiPrompts           Json     @default("{}")
+  requiredDataFields  Json     @default("[]")
+  
+  // 評価設定
+  scoringWeight       Float    @default(1.0)
+  optimizationFocus   Json     @default("[]")
+  
+  createdAt           DateTime @default(now())
+  
+  // リレーション
+  subsidy             SubsidyProgramExtended @relation(fields: [subsidyId], references: [id], onDelete: Cascade)
+  generatedContent    GeneratedContent[]
+  
+  @@map("application_templates")
+}
+
+model UserAnswer {
+  id                  String   @id @default(cuid())
+  userId              String
+  applicationId       String?
+  questionId          String
+  
+  // 回答データ
+  answerValue         String?
+  answerData          Json?
+  confidenceScore     Float?
+  
+  // メタデータ
+  answeredAt          DateTime @default(now())
+  source              String   @default("user") // user, ai, web_analysis
+  
+  // リレーション
+  question            QuestionTemplate @relation(fields: [questionId], references: [id])
+  
+  @@unique([userId, applicationId, questionId])
+  @@map("user_answers")
+}
+
+model CompanyAnalysis {
+  id                      String   @id @default(cuid())
+  userId                  String
+  corporateNumber         String?
+  websiteUrl              String?
+  
+  // 分析結果
+  businessProfile         Json     @default("{}")
+  strengths               Json     @default("[]")
+  marketAnalysis          Json     @default("{}")
+  technologyStack         Json     @default("[]")
+  
+  // スコアリング
+  innovationScore         Int?
+  marketPotentialScore    Int?
+  executionCapabilityScore Int?
+  
+  // システム管理
+  lastAnalyzedAt          DateTime @default(now())
+  analysisVersion         String   @default("1.0")
+  
+  @@unique([userId, corporateNumber])
+  @@map("company_analysis")
+}
+
+model GeneratedContent {
+  id                  String   @id @default(cuid())
+  applicationId       String
+  sectionId           String
+  
+  // 生成コンテンツ
+  content             String
+  optimizationScore   Int      @default(0)
+  
+  // 生成メタデータ
+  generationPrompt    String?
+  aiModel             String?
+  generationTime      DateTime @default(now())
+  
+  // 改善提案
+  suggestions         Json     @default("[]")
+  alternativeVersions Json     @default("[]")
+  
+  // リレーション
+  section             ApplicationTemplate @relation(fields: [sectionId], references: [id])
+  
+  @@map("generated_content")
+}

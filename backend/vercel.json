@@ -5,7 +5,8 @@
       "src": "src/index.ts",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["src/**/*", "prisma/**/*", "assets/**/*"]
+        "includeFiles": ["src/**/*", "prisma/**/*", "assets/**/*"],
+        "maxLambdaSize": "50mb"
       }
     }
   ],
@@ -14,17 +15,5 @@
       "src": "/(.*)",
       "dest": "src/index.ts"
     }
-  ],
-  "env": {
-    "DATABASE_URL": "@database_url",
-    "GEMINI_API_KEY": "@gemini_api_key",
-    "CORPORATE_NUMBER_API_KEY": "@corporate_number_api_key",
-    "SUPABASE_URL": "@supabase_url",
-    "SUPABASE_SERVICE_KEY": "@supabase_service_key"
-  },
-  "functions": {
-    "src/index.ts": {
-      "runtime": "nodejs18.x"
-    }
-  }
+  ]
 }
