@@ -5,6 +5,14 @@
   "devCommand": "cd frontend && npm run dev",
   "installCommand": "cd frontend && npm install",
   
+  "functions": {
+    "frontend/src/app/api/applications/generate/route.ts": {
+      "maxDuration": 60
+    },
+    "frontend/src/app/api/external/company-data/route.ts": {
+      "maxDuration": 30
+    }
+  },
   
   "headers": [
     {

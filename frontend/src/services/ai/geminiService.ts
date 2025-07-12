@@ -28,6 +28,174 @@ export class GeminiService {
       console.warn('Gemini API key not configured')
     }
   }
+
+  /**
+   * Phase 2: 適応型質問生成
+   */
+  async generateAdaptiveQuestions(subsidyType: string, baseQuestions: any[]): Promise<any[]> {
+    const prompt = `
+補助金タイプ「${subsidyType}」に対して、より詳細で適応型の質問を3つ生成してください。
+
+基本質問:
+${baseQuestions.map(q => `- ${q.text}`).join('\n')}
+
+以下の形式で回答してください:
+[
+  {
+    "id": "unique_id",
+    "text": "質問文",
+    "type": "textarea",
+    "category": "カテゴリ",
+    "priority": 優先度(数値),
+    "isRequired": false,
+    "aiContext": "この質問の目的",
+    "validationRules": {"minLength": 50, "maxLength": 800}
+  }
+]
+`
+
+    try {
+      const response = await this.generateContent({
+        prompt,
+        config: { temperature: 0.8, maxOutputTokens: 2048 }
+      })
+
+      // JSON形式のレスポンスをパース
+      const jsonMatch = response.match(/\[[\s\S]*\]/)
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0])
+      }
+      return []
+    } catch (error) {
+      console.error('Error generating adaptive questions:', error)
+      return []
+    }
+  }
+
+  /**
+   * Phase 3: 企業プロファイル分析
+   */
+  async analyzeCompanyProfile(websiteContent: string, url: string): Promise<any> {
+    const prompt = `
+以下のホームページ内容を分析して、企業プロファイルを作成してください。
+
+URL: ${url}
+内容: ${websiteContent}
+
+以下のJSON形式で回答してください:
+{
+  "businessType": "業種",
+  "mainServices": ["主要サービス1", "主要サービス2"],
+  "targetMarket": ["ターゲット市場"],
+  "strengths": ["強み1", "強み2", "強み3"],
+  "technologyStack": ["使用技術"],
+  "companySize": "small|medium|large",
+  "innovationAspects": ["革新的な要素"],
+  "marketPosition": "市場での位置づけ",
+  "competitiveAdvantages": ["競争優位性"],
+  "subsidyRecommendations": ["推奨補助金"],
+  "confidence": 0.8
+}
+`
+
+    try {
+      const response = await this.generateContent({
+        prompt,
+        config: { temperature: 0.5, maxOutputTokens: 2048 }
+      })
+
+      // JSON形式のレスポンスをパース
+      const jsonMatch = response.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0])
+      }
+
+      // フォールバック
+      return this.getDefaultProfile()
+    } catch (error) {
+      console.error('Error analyzing company profile:', error)
+      return this.getDefaultProfile()
+    }
+  }
+
+  /**
+   * 採択最適化コンテンツ生成
+   */
+  async generateOptimizedContent(
+    sectionType: string,
+    answers: any[],
+    companyProfile: any,
+    subsidyType: string
+  ): Promise<{
+    content: string
+    adoptionScore: number
+    suggestions: string[]
+  }> {
+    const prompt = `
+補助金申請書の「${sectionType}」セクションを作成してください。
+
+補助金タイプ: ${subsidyType}
+企業プロファイル: ${JSON.stringify(companyProfile)}
+回答内容: ${JSON.stringify(answers)}
+
+要件:
+1. 採択されやすい内容にする
+2. 具体的で説得力のある文章
+3. 800-1200文字程度
+4. 評価基準を意識した構成
+
+以下の形式で回答:
+{
+  "content": "生成された申請書内容",
+  "adoptionScore": 85,
+  "suggestions": ["改善提案1", "改善提案2"]
+}
+`
+
+    try {
+      const response = await this.generateContent({
+        prompt,
+        config: { temperature: 0.6, maxOutputTokens: 3048 }
+      })
+
+      const jsonMatch = response.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0])
+      }
+
+      return {
+        content: response,
+        adoptionScore: 70,
+        suggestions: ['より具体的な数値を追加してください']
+      }
+    } catch (error) {
+      console.error('Error generating optimized content:', error)
+      return {
+        content: '申請書の生成中にエラーが発生しました。',
+        adoptionScore: 0,
+        suggestions: ['再度生成を試してください']
+      }
+    }
+  }
+
+  /**
+   * デフォルトプロファイル
+   */
+  private getDefaultProfile(): any {
+    return {
+      businessType: '製造業',
+      mainServices: ['製品開発', '製造'],
+      targetMarket: ['国内B2B'],
+      strengths: ['技術力', '品質'],
+      technologyStack: [],
+      companySize: 'small',
+      innovationAspects: ['技術革新'],
+      marketPosition: '専門特化',
+      competitiveAdvantages: ['技術力'],
+      subsidyRecommendations: ['ものづくり補助金'],
+      confidence: 0.3
+    }
+  }
   
   /**
    * 補助金申請書の生成
