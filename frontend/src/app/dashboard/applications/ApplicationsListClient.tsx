@@ -56,7 +56,7 @@ export function ApplicationsListClient() {
           progressPercentage: 100
         },
         {
-          id: '2',
+          id: 'demo-2',
           title: 'AI活用による顧客サービス向上事業',
           status: 'SUBMITTED',
           subsidyProgram: {
@@ -69,7 +69,7 @@ export function ApplicationsListClient() {
           progressPercentage: 100
         },
         {
-          id: '3',
+          id: 'demo-3',
           title: '新商品開発・市場投入プロジェクト',
           status: 'GENERATING',
           subsidyProgram: {
@@ -82,7 +82,7 @@ export function ApplicationsListClient() {
           progressPercentage: 35
         },
         {
-          id: '4',
+          id: 'demo-4',
           title: '地域連携による事業拡大計画',
           status: 'DRAFT',
           subsidyProgram: {
@@ -95,7 +95,7 @@ export function ApplicationsListClient() {
           progressPercentage: 15
         },
         {
-          id: '5',
+          id: 'demo-5',
           title: 'テレワーク環境整備事業',
           status: 'EDITING',
           subsidyProgram: {
