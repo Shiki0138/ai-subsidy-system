@@ -560,11 +560,16 @@ ${prompt.additionalInfo ? `【追加情報】\n${prompt.additionalInfo}` : ''}
    * モックテキストの改善版を生成
    */
   private generateImprovedMockText(originalText: string): string {
+    // 短いテキストの場合は拡張して改善
+    if (originalText.length < 50) {
+      return this.expandShortText(originalText)
+    }
+    
     // 元のテキストを基に改善版を作成
     const sentences = originalText.split('。').filter(s => s.trim())
     
     if (sentences.length === 0) {
-      return originalText
+      return this.expandShortText(originalText)
     }
     
     // 各文に具体的な改善を加える
@@ -591,5 +596,31 @@ ${prompt.additionalInfo ? `【追加情報】\n${prompt.additionalInfo}` : ''}
     
     // 改善版として返す
     return improvedSentences.join('') + '\n\n【改善ポイント】\n・具体的な数値データを追加しました\n・実施内容を明確化しました\n・地域経済への貢献を具体化しました'
+  }
+  
+  /**
+   * 短いテキストを拡張して改善
+   */
+  private expandShortText(text: string): string {
+    const expansions: { [key: string]: string } = {
+      '販路拡大': '新たな販路開拓により、売上高の大幅な向上を目指します。具体的には、ECサイトの構築により全国展開を実現し、月間売上を現在の300万円から500万円（前年比167%）に拡大します。また、SNSマーケティングの強化により、新規顧客獲得数を月間50件から150件に増加させ、地域の特産品を全国に発信することで地域経済の活性化に貢献します。',
+      '生産性向上': '最新設備の導入により、生産性を大幅に向上させます。具体的には、自動化ラインの導入により作業時間を40%削減し、月間生産量を1,000個から1,800個に増加させます。これにより、従業員一人当たりの付加価値額を年間500万円から800万円に向上させ、余剰時間を新商品開発に充てることで、更なる事業拡大を実現します。',
+      '業務改善': '業務プロセスの抜本的な見直しにより、効率化を実現します。デジタルツールの導入により、事務作業時間を月間100時間から40時間に削減し、顧客対応時間を2倍に増やします。また、クラウドシステムの活用により、リモートワークを可能にし、優秀な人材の確保と従業員満足度の向上を図ります。'
+    }
+    
+    // 完全一致する場合
+    if (expansions[text]) {
+      return expansions[text]
+    }
+    
+    // 部分一致する場合
+    for (const [key, value] of Object.entries(expansions)) {
+      if (text.includes(key) || key.includes(text)) {
+        return value
+      }
+    }
+    
+    // デフォルトの拡張
+    return `${text}を実現するため、具体的な施策を展開します。まず、現状分析を徹底的に行い、課題を明確化しました。その上で、最新技術の導入と人材育成を組み合わせた総合的なアプローチを採用し、短期的には前年比120%の成果を、中長期的には業界トップクラスの水準を目指します。さらに、地域企業との連携を強化し、相乗効果による持続的な成長を実現します。`
   }
 }
