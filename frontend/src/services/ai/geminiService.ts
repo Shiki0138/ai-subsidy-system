@@ -24,8 +24,9 @@ export class GeminiService {
   
   constructor(apiKey?: string) {
     this.apiKey = apiKey || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
+    console.log('GeminiService initialized with API key:', this.apiKey ? 'Present (' + this.apiKey.substring(0, 10) + '...)' : 'Missing')
     if (!this.apiKey) {
-      console.warn('Gemini API key not configured')
+      console.warn('Gemini API key not configured - will use mock responses')
     }
   }
 
@@ -388,6 +389,8 @@ ${JSON.stringify(companyData, null, 2)}
       
     } catch (error) {
       console.error('Gemini generation error:', error)
+      console.error('API Key status:', this.apiKey ? 'Present' : 'Missing')
+      console.error('Request prompt:', prompt.substring(0, 100) + '...')
       // エラー時はフォールバック
       return this.getMockResponse(prompt)
     }
@@ -524,6 +527,18 @@ ${prompt.additionalInfo ? `【追加情報】\n${prompt.additionalInfo}` : ''}
    * モックレスポンス（APIキーがない場合のフォールバック）
    */
   private getMockResponse(prompt: string): string {
+    console.warn('Using mock response for prompt:', prompt.substring(0, 100) + '...')
+    
+    // 改善リクエストの場合
+    if (prompt.includes('改善') || prompt.includes('より具体的') || prompt.includes('説得力')) {
+      return `[改善されたテキスト]
+
+元のテキストをより具体的で説得力のある内容に改善しました。
+数値データや具体例を追加し、補助金申請における評価ポイントを意識した構成にしています。
+
+※これはデモ用のモックレスポンスです。実際のAI生成にはGemini APIの正しい設定が必要です。`
+    }
+    
     if (prompt.includes('事業概要')) {
       return `
 弊社は創業以来、地域に根ざした事業活動を展開してまいりました。
