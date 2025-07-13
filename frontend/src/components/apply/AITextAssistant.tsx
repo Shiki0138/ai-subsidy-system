@@ -30,6 +30,7 @@ export function AITextAssistant({
 
   // 参考例文の定義
   const examples: Record<string, string> = {
+    projectTitle: 'DX推進による販路拡大計画',
     currentChallenges: '現在、当社では新規顧客の獲得に苦戦しており、既存の販路では売上成長に限界を感じています。また、業務の属人化により効率が悪く、スタッフの負担が増加しています。',
     improvementNeeds: 'ECサイトを構築してオンライン販売を強化し、全国の顧客にアプローチしたいと考えています。同時に、業務管理システムを導入して効率化を図ります。',
     projectDescription: '自社ECサイトを構築し、既存商品のオンライン販売を開始します。SNSマーケティングと連携し、ブランド認知度を高めながら新規顧客を獲得します。',
@@ -51,7 +52,49 @@ export function AITextAssistant({
     setLoading(true)
     try {
       const geminiService = new GeminiService()
-      const prompt = `
+      
+      // フィールドごとに異なるプロンプトを生成
+      let prompt = ''
+      
+      if (fieldName === 'projectTitle') {
+        // 事業計画名の場合：短く、キャッチーなタイトルを生成
+        prompt = `
+あなたは${subsidyType}の申請書作成の専門家です。
+以下の内容をもとに、審査員の印象に残る、短くてキャッチーな事業計画名を生成してください。
+
+現在の事業計画名：
+${currentValue}
+
+生成のポイント：
+- 15文字以内で簡潔に
+- 事業の特徴や目的が一目でわかる
+- インパクトがあり記憶に残る
+- ${subsidyType}の趣旨に合致する
+- 具体的な価値提案を含む
+
+改善後の事業計画名のみを出力してください。
+`
+      } else if (fieldName === 'projectDescription') {
+        // 事業計画の概要の場合：包括的な概要文を生成
+        prompt = `
+あなたは${subsidyType}の申請書作成の専門家です。
+以下の内容を、審査員に事業の全体像が伝わる包括的な概要文に改善してください。
+
+現在の概要：
+${currentValue}
+
+改善のポイント：
+- 事業の背景・課題を明確に
+- 解決策と実施内容を具体的に
+- 期待される効果を数値で示す
+- 200-300文字程度でまとめる
+- ${subsidyType}の審査基準に適合する内容
+
+改善後の概要文のみを出力してください。
+`
+      } else {
+        // その他のフィールドの場合：汎用的な改善
+        prompt = `
 あなたは${subsidyType}の申請書作成の専門家です。
 以下の「${fieldLabel}」の内容を、審査員に伝わりやすく、説得力のある文章に改善してください。
 
@@ -66,6 +109,7 @@ ${currentValue}
 
 改善後の文章のみを出力してください。
 `
+      }
 
       const improvedText = await geminiService.improveText(prompt)
       onUpdate(improvedText)

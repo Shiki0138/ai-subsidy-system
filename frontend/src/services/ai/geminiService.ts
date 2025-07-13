@@ -21,6 +21,7 @@ export interface SubsidyApplicationPrompt {
 export class GeminiService {
   private apiKey: string
   private baseUrl = 'https://generativelanguage.googleapis.com/v1beta'
+  private lastPrompt: string = ''
   
   constructor(apiKey?: string) {
     this.apiKey = apiKey || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
@@ -528,6 +529,7 @@ ${prompt.additionalInfo ? `【追加情報】\n${prompt.additionalInfo}` : ''}
    */
   private getMockResponse(prompt: string): string {
     console.warn('Using mock response for prompt:', prompt.substring(0, 100) + '...')
+    this.lastPrompt = prompt // プロンプトを保存
     
     // 改善リクエストの場合 - 元のテキストを抽出して改善版を作成
     if (prompt.includes('改善') || prompt.includes('より具体的') || prompt.includes('説得力')) {
@@ -602,6 +604,23 @@ ${prompt.additionalInfo ? `【追加情報】\n${prompt.additionalInfo}` : ''}
    * 短いテキストを拡張して改善
    */
   private expandShortText(text: string): string {
+    // プロンプトに事業計画名が含まれる場合は短いタイトルを生成
+    if (this.lastPrompt && (this.lastPrompt.includes('事業計画名') || this.lastPrompt.includes('15文字以内'))) {
+      const titleExamples = [
+        'DX推進による販路拡大計画',
+        'AI活用型業務効率化事業',
+        '地域連携型EC展開プロジェクト',
+        'スマート製造ライン導入計画',
+        '次世代型サービス開発事業'
+      ]
+      // 元のテキストに基づいて適切なタイトルを選択または生成
+      if (text.includes('販路') || text.includes('EC')) return titleExamples[2]
+      if (text.includes('DX') || text.includes('デジタル')) return titleExamples[0]
+      if (text.includes('AI') || text.includes('自動')) return titleExamples[1]
+      if (text.includes('製造') || text.includes('生産')) return titleExamples[3]
+      return titleExamples[4]
+    }
+    
     const expansions: { [key: string]: string } = {
       '販路拡大': '新たな販路開拓により、売上高の大幅な向上を目指します。具体的には、ECサイトの構築により全国展開を実現し、月間売上を現在の300万円から500万円（前年比167%）に拡大します。また、SNSマーケティングの強化により、新規顧客獲得数を月間50件から150件に増加させ、地域の特産品を全国に発信することで地域経済の活性化に貢献します。',
       '生産性向上': '最新設備の導入により、生産性を大幅に向上させます。具体的には、自動化ラインの導入により作業時間を40%削減し、月間生産量を1,000個から1,800個に増加させます。これにより、従業員一人当たりの付加価値額を年間500万円から800万円に向上させ、余剰時間を新商品開発に充てることで、更なる事業拡大を実現します。',

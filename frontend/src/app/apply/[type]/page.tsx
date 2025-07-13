@@ -295,9 +295,44 @@ export default function ApplyPage() {
     }
   }
 
-  const handleDownloadPDF = () => {
-    showSuccess('PDFのダウンロードを開始しました')
-    // 実際のPDF生成・ダウンロード処理
+  const handleDownloadPDF = async () => {
+    try {
+      // 申請書データの準備
+      const applicationData = {
+        id: Date.now().toString(),
+        title: formData.projectTitle || '補助金申請書',
+        subsidyProgramName: subsidy.name,
+        subsidyProgramCategory: type,
+        projectDescription: formData.projectDescription || '',
+        purpose: formData.projectPurpose || '',
+        targetMarket: formData.targetMarket || '',
+        expectedEffects: formData.expectedResults || '',
+        budget: parseInt(formData.expectedBudget?.replace(/[^0-9]/g, '') || '0'),
+        timeline: `実施期間: ${formData.projectPeriod || '未定'}`,
+        challenges: formData.currentChallenges || '',
+        innovation: formData.competitiveAdvantage || '',
+        companyName: formData.companyName || '',
+        representativeName: formData.representativeName || '',
+        createdAt: new Date().toISOString(),
+        status: 'COMPLETED'
+      }
+      
+      // シンプルなPDF生成を試す
+      const { downloadApplicationAsPDF, showApplicationPreview } = await import('@/utils/simplePdfGenerator')
+      
+      try {
+        await downloadApplicationAsPDF(applicationData)
+        showSuccess('PDFをダウンロードしました')
+      } catch (pdfError) {
+        console.warn('PDF生成に失敗しました。HTMLプレビューを表示します。', pdfError)
+        showApplicationPreview(applicationData)
+        showSuccess('プレビューを表示しました。印刷機能でPDF保存できます。')
+      }
+      
+    } catch (error) {
+      console.error('PDF生成エラー:', error)
+      showError('PDF生成に失敗しました。もう一度お試しください。')
+    }
   }
   
   // テンプレートの保存

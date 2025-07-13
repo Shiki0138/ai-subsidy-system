@@ -1,5 +1,5 @@
 import html2canvas from 'html2canvas'
-import jsPDF from 'jspdf'
+import { jsPDF } from 'jspdf'
 
 // HTMLプレビュー表示関数
 export const openHTMLPreview = (applicationData: ApplicationData): void => {
@@ -55,52 +55,70 @@ export const generateApplicationPDF = async (
       : document.querySelector('.pdf-content')
 
     if (!element) {
-      throw new Error('PDF生成用の要素が見つかりません')
+      console.error('PDF生成用の要素が見つかりません。テンプレートを作成します。')
+      // テンプレートを作成してPDF生成
+      const tempElement = createPDFTemplate(applicationData)
+      document.body.appendChild(tempElement)
+      
+      try {
+        await generateApplicationPDFFromElement(tempElement, applicationData)
+      } finally {
+        document.body.removeChild(tempElement)
+      }
+      return
     }
 
-    // Mac Silicon対応のcanvas設定
-    const canvas = await html2canvas(element as HTMLElement, {
-      ...PDF_CONFIG,
-      height: element.scrollHeight,
-      width: element.scrollWidth,
-    })
-
-    const imgData = canvas.toDataURL('image/png', 1.0)
-    
-    // A4サイズの設定（mm）
-    const pdf = new jsPDF({
-      orientation: PDF_CONFIG.orientation,
-      unit: PDF_CONFIG.unit,
-      format: PDF_CONFIG.format,
-      compress: PDF_CONFIG.compress,
-    })
-
-    const imgWidth = 210 // A4幅
-    const pageHeight = 295 // A4高さ
-    const imgHeight = (canvas.height * imgWidth) / canvas.width
-    let heightLeft = imgHeight
-
-    let position = 0
-
-    // ページ分割処理
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, '', 'FAST')
-    heightLeft -= pageHeight
-
-    while (heightLeft >= 0) {
-      position = heightLeft - imgHeight
-      pdf.addPage()
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, '', 'FAST')
-      heightLeft -= pageHeight
-    }
-
-    // ファイル名生成
-    const fileName = `申請書_${applicationData.title}_${formatDateForFilename(applicationData.createdAt)}.pdf`
-    
-    pdf.save(fileName)
+    await generateApplicationPDFFromElement(element as HTMLElement, applicationData)
   } catch (error) {
     console.error('PDF生成エラー:', error)
     throw new Error('PDF生成に失敗しました。ブラウザの設定を確認してください。')
   }
+}
+
+// 要素からPDFを生成する共通関数
+const generateApplicationPDFFromElement = async (
+  element: HTMLElement,
+  applicationData: ApplicationData
+): Promise<void> => {
+  // Mac Silicon対応のcanvas設定
+  const canvas = await html2canvas(element, {
+    ...PDF_CONFIG,
+    height: element.scrollHeight,
+    width: element.scrollWidth,
+  })
+
+  const imgData = canvas.toDataURL('image/png', 1.0)
+  
+  // A4サイズの設定（mm）
+  const pdf = new jsPDF({
+    orientation: PDF_CONFIG.orientation,
+    unit: PDF_CONFIG.unit,
+    format: PDF_CONFIG.format,
+    compress: PDF_CONFIG.compress,
+  })
+
+  const imgWidth = 210 // A4幅
+  const pageHeight = 295 // A4高さ
+  const imgHeight = (canvas.height * imgWidth) / canvas.width
+  let heightLeft = imgHeight
+
+  let position = 0
+
+  // ページ分割処理
+  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, '', 'FAST')
+  heightLeft -= pageHeight
+
+  while (heightLeft >= 0) {
+    position = heightLeft - imgHeight
+    pdf.addPage()
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, '', 'FAST')
+    heightLeft -= pageHeight
+  }
+
+  // ファイル名生成
+  const fileName = `申請書_${applicationData.title}_${formatDateForFilename(applicationData.createdAt)}.pdf`
+  
+  pdf.save(fileName)
 }
 
 // テンプレートベースのPDF生成（高品質）
