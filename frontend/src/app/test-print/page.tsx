@@ -162,28 +162,52 @@ export default function TestPrintPage() {
           <p className="text-sm text-gray-600 mb-6">
             各補助金の公式フォーマットに対応した申請書を作成できます。
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <a
-              href="/apply/jizokuka"
-              className="block p-4 border border-gray-200 rounded-lg hover:border-brand-500 transition-colors"
-            >
-              <h3 className="font-medium text-gray-900 mb-2">小規模事業者持続化補助金</h3>
-              <p className="text-sm text-gray-600">販路開拓等の取組を支援</p>
-            </a>
-            <a
-              href="/apply/it-subsidy"
-              className="block p-4 border border-gray-200 rounded-lg hover:border-brand-500 transition-colors"
-            >
-              <h3 className="font-medium text-gray-900 mb-2">IT導入補助金</h3>
-              <p className="text-sm text-gray-600">ITツール導入を支援</p>
-            </a>
-            <a
-              href="/apply/monozukuri"
-              className="block p-4 border border-gray-200 rounded-lg hover:border-brand-500 transition-colors"
-            >
-              <h3 className="font-medium text-gray-900 mb-2">ものづくり補助金</h3>
-              <p className="text-sm text-gray-600">革新的開発を支援</p>
-            </a>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3">📋 テンプレート方式</h3>
+              <div className="space-y-3">
+                <a
+                  href="/apply/jizokuka"
+                  className="block p-4 border border-gray-200 rounded-lg hover:border-brand-500 transition-colors"
+                >
+                  <h4 className="font-medium text-gray-900 mb-1">小規模事業者持続化補助金</h4>
+                  <p className="text-sm text-gray-600">販路開拓等の取組を支援</p>
+                </a>
+                <a
+                  href="/apply/it-subsidy"
+                  className="block p-4 border border-gray-200 rounded-lg hover:border-brand-500 transition-colors"
+                >
+                  <h4 className="font-medium text-gray-900 mb-1">IT導入補助金</h4>
+                  <p className="text-sm text-gray-600">ITツール導入を支援</p>
+                </a>
+                <a
+                  href="/apply/monozukuri"
+                  className="block p-4 border border-gray-200 rounded-lg hover:border-brand-500 transition-colors"
+                >
+                  <h4 className="font-medium text-gray-900 mb-1">ものづくり補助金</h4>
+                  <p className="text-sm text-gray-600">革新的開発を支援</p>
+                </a>
+              </div>
+            </div>
+            
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3">📑 募集要項ベース方式</h3>
+              <div className="space-y-3">
+                <a
+                  href="/apply/gyomu-kaizen"
+                  className="block p-4 border border-green-200 bg-green-50 rounded-lg hover:border-green-500 transition-colors"
+                >
+                  <h4 className="font-medium text-gray-900 mb-1">業務改善助成金</h4>
+                  <p className="text-sm text-gray-600">募集要項をアップロードして自動生成</p>
+                  <p className="text-xs text-green-600 mt-2">✨ NEW: DOCXファイル対応</p>
+                </a>
+                <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                  <p className="text-sm text-gray-600">
+                    今後、他の補助金も募集要項ベースに対応予定
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
