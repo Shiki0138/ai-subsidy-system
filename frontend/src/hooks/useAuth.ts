@@ -32,10 +32,21 @@ interface AuthResponse {
   user: User
 }
 
+// 認証機能を一時的に無効化（将来の実装用）
 export function useAuth() {
-  const [isInitialized, setIsInitialized] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(true) // 常に初期化済みとする
   const router = useRouter()
   const queryClient = useQueryClient()
+  
+  // デモ用のユーザーデータ
+  const demoUser: User = {
+    id: 'demo-user-001',
+    email: 'demo@example.com',
+    name: 'デモユーザー',
+    companyName: 'デモ企業',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
 
   // トークンの管理
   const getToken = () => {
@@ -51,57 +62,33 @@ export function useAuth() {
     localStorage.removeItem('token')
   }
 
-  // ユーザー情報取得
+  // ユーザー情報取得（デモモード）
   const { data: user, isLoading: isUserLoading, error } = useQuery({
     queryKey: ['user'],
     queryFn: async () => {
-      const token = getToken()
-      if (!token) return null
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      })
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          removeToken()
-          return null
-        }
-        throw new Error('ユーザー情報の取得に失敗しました')
-      }
-
-      const result = await response.json()
-      return result.user
+      // 認証機能が実装されるまでは常にデモユーザーを返す
+      return demoUser
     },
-    enabled: !!getToken(),
+    enabled: true,
     retry: false,
   })
 
-  // ログイン
+  // ログイン（デモモード）
   const loginMutation = useMutation({
     mutationFn: async (data: LoginData): Promise<AuthResponse> => {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      })
-
-      const result = await response.json()
-
-      if (!result.success) {
-        throw new Error(result.error?.message || 'ログインに失敗しました')
+      // 認証機能が実装されるまでは常に成功を返す
+      await new Promise(resolve => setTimeout(resolve, 1000)) // 遅延をシミュレート
+      
+      return {
+        success: true,
+        token: 'demo-token-' + Date.now(),
+        user: demoUser,
       }
-
-      return result
     },
     onSuccess: (data) => {
       setToken(data.token)
       queryClient.setQueryData(['user'], data.user)
-      toast.success('ログインしました')
+      toast.success('デモモードでログインしました')
       router.push('/dashboard')
     },
     onError: (error: Error) => {
@@ -109,29 +96,29 @@ export function useAuth() {
     },
   })
 
-  // 新規登録
+  // 新規登録（デモモード）
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterData): Promise<AuthResponse> => {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      })
-
-      const result = await response.json()
-
-      if (!result.success) {
-        throw new Error(result.error?.message || 'アカウント作成に失敗しました')
+      // 認証機能が実装されるまでは常に成功を返す
+      await new Promise(resolve => setTimeout(resolve, 1000)) // 遅延をシミュレート
+      
+      const newUser: User = {
+        ...demoUser,
+        email: data.email,
+        name: data.name,
+        companyName: data.companyName,
       }
-
-      return result
+      
+      return {
+        success: true,
+        token: 'demo-token-' + Date.now(),
+        user: newUser,
+      }
     },
     onSuccess: (data) => {
       setToken(data.token)
       queryClient.setQueryData(['user'], data.user)
-      toast.success('アカウントを作成しました')
+      toast.success('デモモードでアカウントを作成しました')
       router.push('/dashboard')
     },
     onError: (error: Error) => {
@@ -139,13 +126,13 @@ export function useAuth() {
     },
   })
 
-  // ログアウト
+  // ログアウト（デモモード）
   const logout = () => {
     removeToken()
     queryClient.setQueryData(['user'], null)
     queryClient.clear()
-    toast.success('ログアウトしました')
-    router.push('/auth/login')
+    toast.success('ログアウトしました（デモモード）')
+    router.push('/')
   }
 
   // 初期化完了の判定
@@ -155,8 +142,9 @@ export function useAuth() {
     }
   }, [isUserLoading])
 
-  const isAuthenticated = !!user && !!getToken()
-  const isLoading = !isInitialized || (getToken() && isUserLoading)
+  // デモモードでは常に認証済みとする
+  const isAuthenticated = true
+  const isLoading = false
 
   return {
     user,

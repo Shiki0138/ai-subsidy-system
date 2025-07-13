@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuth } from '@/hooks'
 import { ProfileEditForm } from '@/components/profile/ProfileEditForm'
 import { ProfileSummary } from '@/components/profile/ProfileSummary'
 import { 

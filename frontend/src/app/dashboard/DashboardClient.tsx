@@ -15,7 +15,7 @@ import {
   BoltIcon,
   ArrowRightIcon,
 } from '@heroicons/react/24/outline'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuth } from '@/hooks'
 import { useQuery } from '@tanstack/react-query'
 import { StatsGrid } from '@/components/dashboard/StatsGrid'
 import { ProgressRing, MultiProgressRing } from '@/components/dashboard/ProgressRing'
