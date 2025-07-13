@@ -1,13 +1,6 @@
-// 申請書・募集要項ドキュメント処理ユーティリティ
+// クライアントサイド用のドキュメント処理ユーティリティ
 
 import mammoth from 'mammoth'
-import * as pdfjsLib from 'pdfjs-dist'
-import { createReport } from 'docx-templates'
-
-// PDF.jsのworkerを設定
-if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
-}
 
 // 募集要項の要件を構造化
 export interface RequirementSection {
@@ -34,16 +27,9 @@ export interface GuidelineData {
 }
 
 // DOCXファイルを読み込んで内容を抽出
-export async function readDocxContent(file: File | Buffer): Promise<string> {
+export async function readDocxContent(file: File): Promise<string> {
   try {
-    let arrayBuffer: ArrayBuffer
-    
-    if (file instanceof File) {
-      arrayBuffer = await file.arrayBuffer()
-    } else {
-      arrayBuffer = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength)
-    }
-    
+    const arrayBuffer = await file.arrayBuffer()
     const result = await mammoth.extractRawText({ arrayBuffer })
     return result.value
   } catch (error) {
@@ -52,28 +38,14 @@ export async function readDocxContent(file: File | Buffer): Promise<string> {
   }
 }
 
-// PDFファイルから募集要項を読み込み（クライアントサイド対応）
-export async function readPdfGuidelines(file: File): Promise<string> {
+// シンプルなテキスト読み込み（PDFの場合は外部サービスを使用するか、テキストファイルを推奨）
+export async function readTextFile(file: File): Promise<string> {
   try {
-    const arrayBuffer = await file.arrayBuffer()
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-    
-    let fullText = ''
-    const numPages = pdf.numPages
-    
-    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum)
-      const textContent = await page.getTextContent()
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(' ')
-      fullText += pageText + '\n'
-    }
-    
-    return fullText
+    const text = await file.text()
+    return text
   } catch (error) {
-    console.error('PDF読み込みエラー:', error)
-    throw new Error('PDFファイルの読み込みに失敗しました')
+    console.error('ファイル読み込みエラー:', error)
+    throw new Error('ファイルの読み込みに失敗しました')
   }
 }
 
@@ -99,17 +71,18 @@ export function parseGuidelines(text: string): GuidelineData {
 // 補助金名を抽出
 function extractSubsidyName(text: string): string {
   const patterns = [
-    /令和\d+年度\s*(.+?補助金)/,
-    /【(.+?補助金)】/,
-    /^(.+?補助金)/m
+    /令和\d+年度\s*(.+?助成金)/,
+    /【(.+?助成金)】/,
+    /^(.+?助成金)/m,
+    /業務改善助成金/
   ]
   
   for (const pattern of patterns) {
     const match = text.match(pattern)
-    if (match) return match[1]
+    if (match) return match[0]
   }
   
-  return '補助金'
+  return '業務改善助成金'
 }
 
 // 目的を抽出
@@ -124,7 +97,7 @@ function extractPurpose(sections: string[]): string {
     }
   }
   
-  return ''
+  return '中小企業・小規模事業者の生産性向上を支援し、事業場内最低賃金の引上げを図るための制度です。'
 }
 
 // 対象事業者を抽出
@@ -135,7 +108,6 @@ function extractTargetBusiness(sections: string[]): string[] {
   for (const section of sections) {
     for (const keyword of targetKeywords) {
       if (section.includes(keyword)) {
-        // 箇条書きを抽出
         const lines = section.split('\n')
         lines.forEach(line => {
           if (line.match(/^[・●○□▪▫◆◇■□]/)) {
@@ -146,20 +118,25 @@ function extractTargetBusiness(sections: string[]): string[] {
     }
   }
   
+  // デフォルト値
+  if (targets.length === 0) {
+    targets.push('中小企業・小規模事業者')
+    targets.push('事業場内最低賃金と地域別最低賃金の差額が50円以内の事業場')
+  }
+  
   return targets
 }
 
 // 補助金額を抽出
 function extractSubsidyAmount(sections: string[]): { min: number; max: number; rate: string } {
-  const amountKeywords = ['補助金額', '補助上限', '補助率', '交付額']
-  let min = 0
-  let max = 0
-  let rate = ''
+  const amountKeywords = ['助成金額', '助成上限', '助成率', '交付額']
+  let min = 300000
+  let max = 6000000
+  let rate = '3/4'
   
   for (const section of sections) {
     for (const keyword of amountKeywords) {
       if (section.includes(keyword)) {
-        // 金額パターンを抽出
         const amountPattern = /(\d{1,4})[万千]\s*円/g
         const matches = section.matchAll(amountPattern)
         const amounts: number[] = []
@@ -175,7 +152,6 @@ function extractSubsidyAmount(sections: string[]): { min: number; max: number; r
           max = Math.max(...amounts)
         }
         
-        // 補助率を抽出
         const ratePattern = /(\d+)[／/](\d+)|(\d+)%|(\d+)割/
         const rateMatch = section.match(ratePattern)
         if (rateMatch) {
@@ -190,7 +166,7 @@ function extractSubsidyAmount(sections: string[]): { min: number; max: number; r
 
 // 対象経費を抽出
 function extractEligibleExpenses(sections: string[]): string[] {
-  const expenseKeywords = ['対象経費', '補助対象経費', '経費区分', '対象となる経費']
+  const expenseKeywords = ['対象経費', '助成対象経費', '経費区分', '対象となる経費']
   const expenses: string[] = []
   
   for (const section of sections) {
@@ -206,6 +182,13 @@ function extractEligibleExpenses(sections: string[]): string[] {
     }
   }
   
+  // デフォルト値
+  if (expenses.length === 0) {
+    expenses.push('設備投資費用（機械装置等購入費）')
+    expenses.push('コンサルティング費用')
+    expenses.push('教育訓練費')
+  }
+  
   return expenses
 }
 
@@ -213,6 +196,18 @@ function extractEligibleExpenses(sections: string[]): string[] {
 function extractRequirements(sections: string[]): RequirementSection[] {
   const requirements: RequirementSection[] = []
   const reqKeywords = ['事業計画', '実施内容', '必要書類', '記載事項', '提出書類']
+  
+  // デフォルトの要件
+  requirements.push({
+    title: '事業実施計画',
+    requirements: [
+      '生産性向上のための設備投資等の計画',
+      '賃金引上げ計画',
+      '事業実施による効果'
+    ],
+    keywords: ['生産性', '向上', '効率化', '改善', '賃金', '引上げ'],
+    maxLength: 800
+  })
   
   for (const section of sections) {
     for (const keyword of reqKeywords) {
@@ -223,14 +218,12 @@ function extractRequirements(sections: string[]): RequirementSection[] {
           keywords: extractKeywords(section)
         }
         
-        // 文字数制限を抽出
         const lengthPattern = /(\d{2,4})[字文]字?(以内|程度|まで)/
         const lengthMatch = section.match(lengthPattern)
         if (lengthMatch) {
           req.maxLength = parseInt(lengthMatch[1])
         }
         
-        // 要件を抽出
         const lines = section.split('\n')
         lines.forEach(line => {
           if (line.length > 10 && !line.match(/^[\s　]*$/)) {
@@ -238,7 +231,9 @@ function extractRequirements(sections: string[]): RequirementSection[] {
           }
         })
         
-        requirements.push(req)
+        if (req.requirements.length > 0) {
+          requirements.push(req)
+        }
       }
     }
   }
@@ -250,13 +245,18 @@ function extractRequirements(sections: string[]): RequirementSection[] {
 function extractDeadline(text: string): string {
   const deadlinePattern = /締[切切][:：]?\s*(.+?日)/
   const match = text.match(deadlinePattern)
-  return match ? match[1] : ''
+  return match ? match[1] : '随時受付'
 }
 
 // 評価ポイントを抽出
 function extractEvaluationPoints(sections: string[]): string[] {
   const evalKeywords = ['審査基準', '評価基準', '評価ポイント', '審査の観点']
   const points: string[] = []
+  
+  // デフォルトの評価ポイント
+  points.push('生産性向上の具体性・実現可能性')
+  points.push('賃金引上げ計画の妥当性')
+  points.push('事業の継続性・発展性')
   
   for (const section of sections) {
     for (const keyword of evalKeywords) {
@@ -278,9 +278,9 @@ function extractEvaluationPoints(sections: string[]): string[] {
 function extractKeywords(text: string): string[] {
   const keywords: string[] = []
   const importantWords = [
-    '革新', '生産性', '効率化', 'DX', 'デジタル', '改善', '向上',
-    '新規', '創出', '開発', '導入', '展開', '拡大', '強化',
-    '課題', '解決', '効果', '成果', '実績', '計画', '戦略'
+    '生産性', '向上', '効率化', '改善', '賃金', '引上げ',
+    'デジタル', '自動化', '省力化', '機械', '設備',
+    '売上', '利益', '削減', '短縮', '品質'
   ]
   
   importantWords.forEach(word => {
@@ -292,27 +292,8 @@ function extractKeywords(text: string): string[] {
   return keywords
 }
 
-// DOCXテンプレートに値を入力
-export async function fillDocxTemplate(
-  templateBuffer: Buffer,
-  data: Record<string, any>
-): Promise<Buffer> {
-  try {
-    const result = await createReport({
-      template: templateBuffer,
-      data: data,
-      cmdDelimiter: ['{{', '}}'], // プレースホルダーの形式
-    })
-    
-    return Buffer.from(result)
-  } catch (error) {
-    console.error('DOCXテンプレート処理エラー:', error)
-    throw new Error('申請書の生成に失敗しました')
-  }
-}
-
 // 業務改善助成金の申請書フィールドマッピング
-export const GYOMU_KAIZEN_FIELDS = {
+export const GYOMU_KAIZEN_FIELDS: Record<string, string> = {
   '事業場名': 'companyName',
   '所在地': 'address',
   '代表者氏名': 'representativeName',

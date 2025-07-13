@@ -12,13 +12,12 @@ import { toast } from 'react-hot-toast'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import {
   readDocxContent,
-  readPdfGuidelines,
+  readTextFile,
   parseGuidelines,
-  fillDocxTemplate,
   generateFieldPrompt,
   GYOMU_KAIZEN_FIELDS,
   GuidelineData
-} from '@/utils/document-processor'
+} from '@/utils/client-document-processor'
 
 interface GuidelineBasedFormProps {
   subsidyType?: string
@@ -27,7 +26,7 @@ interface GuidelineBasedFormProps {
 export function GuidelineBasedForm({ subsidyType }: GuidelineBasedFormProps) {
   const [guideline, setGuideline] = useState<GuidelineData | null>(null)
   const [templateContent, setTemplateContent] = useState<string>('')
-  const [templateBuffer, setTemplateBuffer] = useState<Buffer | null>(null)
+  const [templateFile, setTemplateFile] = useState<File | null>(null)
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [isProcessing, setIsProcessing] = useState(false)
   const [currentField, setCurrentField] = useState<string>('')
@@ -44,12 +43,12 @@ export function GuidelineBasedForm({ subsidyType }: GuidelineBasedFormProps) {
     try {
       let text = ''
       
-      if (file.type === 'application/pdf') {
-        text = await readPdfGuidelines(file)
-      } else if (file.name.endsWith('.docx')) {
+      if (file.name.endsWith('.docx')) {
         text = await readDocxContent(file)
+      } else if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+        text = await readTextFile(file)
       } else {
-        throw new Error('PDFまたはDOCXファイルをアップロードしてください')
+        throw new Error('DOCX、またはテキストファイルをアップロードしてください（PDFの場合は事前にテキスト変換してください）')
       }
 
       const parsedGuideline = parseGuidelines(text)
@@ -74,9 +73,7 @@ export function GuidelineBasedForm({ subsidyType }: GuidelineBasedFormProps) {
 
     setIsProcessing(true)
     try {
-      const arrayBuffer = await file.arrayBuffer()
-      const buffer = Buffer.from(arrayBuffer)
-      setTemplateBuffer(buffer)
+      setTemplateFile(file)
       
       const content = await readDocxContent(file)
       setTemplateContent(content)
@@ -162,37 +159,39 @@ export function GuidelineBasedForm({ subsidyType }: GuidelineBasedFormProps) {
     toast.success('すべてのフィールドを生成しました')
   }
 
-  // 申請書をダウンロード
+  // 申請書をダウンロード（簡易版：フォーマット済みテキストとして）
   const downloadApplication = async () => {
-    if (!templateBuffer) {
+    if (!templateFile) {
       toast.error('申請書テンプレートをアップロードしてください')
       return
     }
 
     setIsProcessing(true)
     try {
-      // プレースホルダーを実際の値に置換
-      const data: Record<string, string> = {}
-      Object.entries(GYOMU_KAIZEN_FIELDS).forEach(([fieldName, fieldKey]) => {
-        data[fieldName] = formData[fieldKey] || ''
-      })
-
-      const filledBuffer = await fillDocxTemplate(templateBuffer, data)
+      // フォーマット済みテキストとして生成
+      let content = `業務改善助成金 申請書\n\n`
+      content += `作成日: ${new Date().toLocaleDateString('ja-JP')}\n`
+      content += `${'='.repeat(50)}\n\n`
       
-      // ダウンロード
-      const blob = new Blob([filledBuffer], { 
-        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+      Object.entries(GYOMU_KAIZEN_FIELDS).forEach(([fieldName, fieldKey]) => {
+        const value = formData[fieldKey] || '（未入力）'
+        content += `【${fieldName}】\n`
+        content += `${value}\n\n`
       })
+      
+      // テキストファイルとしてダウンロード
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `業務改善助成金申請書_${new Date().toISOString().split('T')[0]}.docx`
+      a.download = `業務改善助成金申請書_${new Date().toISOString().split('T')[0]}.txt`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
       
-      toast.success('申請書をダウンロードしました')
+      toast.success('申請書をダウンロードしました（テキスト形式）')
+      toast.info('DOCXテンプレートに手動で転記してください', { duration: 5000 })
     } catch (error) {
       console.error('ダウンロードエラー:', error)
       toast.error('申請書のダウンロードに失敗しました')
@@ -220,12 +219,15 @@ export function GuidelineBasedForm({ subsidyType }: GuidelineBasedFormProps) {
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
             <DocumentArrowUpIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-600 mb-4">
-              募集要項のPDFまたはDOCXファイルをアップロードしてください
+              募集要項のDOCXまたはテキストファイルをアップロードしてください
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              ※PDFの場合は、事前にテキストファイルに変換してください
             </p>
             <input
               ref={guidelineInputRef}
               type="file"
-              accept=".pdf,.docx"
+              accept=".docx,.txt"
               onChange={handleGuidelineUpload}
               className="hidden"
             />

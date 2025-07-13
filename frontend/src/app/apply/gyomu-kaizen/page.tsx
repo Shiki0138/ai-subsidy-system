@@ -34,7 +34,7 @@ export default function GyomuKaizenPage() {
               <div className="bg-white rounded-lg p-4">
                 <h3 className="font-semibold text-gray-900 mb-2">📄 ステップ1</h3>
                 <p className="text-sm text-gray-600">
-                  募集要項（PDF/DOCX）をアップロード
+                  募集要項（DOCX/TXT）をアップロード
                 </p>
               </div>
               <div className="bg-white rounded-lg p-4">
