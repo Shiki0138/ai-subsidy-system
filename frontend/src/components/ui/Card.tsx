@@ -1,5 +1,5 @@
 import { HTMLAttributes, ReactNode } from 'react'
-import { cn } from '@/lib/utils'
+import { cn } from '../../utils/cn'
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode
@@ -54,4 +54,16 @@ const CardFooter = ({ className, children, ...props }: CardFooterProps) => (
   </div>
 )
 
-export { Card, CardHeader, CardBody, CardFooter }
+const CardTitle = ({ className, children, ...props }: CardHeaderProps) => (
+  <h3 className={cn('text-lg font-semibold leading-none tracking-tight', className)} {...props}>
+    {children}
+  </h3>
+)
+
+const CardContent = ({ className, children, ...props }: CardBodyProps) => (
+  <div className={cn('pt-0', className)} {...props}>
+    {children}
+  </div>
+)
+
+export { Card, CardHeader, CardBody, CardFooter, CardTitle, CardContent }

@@ -164,3 +164,13 @@ export const WarningAlert: React.FC<Omit<AlertProps, 'type'>> = (props) => (
 export const ErrorAlert: React.FC<Omit<AlertProps, 'type'>> = (props) => (
   <Alert type="error" {...props} />
 );
+
+// shadcn/ui style exports
+export const AlertDescription: React.FC<{ children: React.ReactNode; className?: string }> = ({ 
+  children, 
+  className 
+}) => (
+  <div className={cn('text-sm', className)}>
+    {children}
+  </div>
+);

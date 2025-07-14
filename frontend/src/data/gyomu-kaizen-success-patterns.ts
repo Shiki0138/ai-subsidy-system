@@ -3,7 +3,7 @@
 import { SuccessPattern, AcceptedExample } from '@/types/success-patterns'
 
 // 業界別成功パターン
-export const GYOMU_KAIZEN_SUCCESS_PATTERNS: SuccessPattern[] = [
+export const SUCCESS_PATTERNS: SuccessPattern[] = [
   {
     id: 'manufacturing-small',
     industry: '製造業',

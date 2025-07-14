@@ -1,7 +1,19 @@
 import { jsPDF } from 'jspdf';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import createReport from 'docx-templates';
-import { saveAs } from 'file-saver';
+// import { saveAs } from 'file-saver';
+
+// ファイルダウンロード関数
+const saveAs = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
 
 export interface DocumentData {
   [key: string]: string | number | boolean | undefined;
