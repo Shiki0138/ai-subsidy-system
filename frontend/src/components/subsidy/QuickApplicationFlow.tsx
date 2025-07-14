@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import { Progress } from '@/components/ui/progress';
-import { Input } from '@/components/ui/input';
+import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { 
   ArrowRight, 
   ArrowLeft, 
@@ -21,7 +21,7 @@ import {
   Download,
   Sparkles
 } from 'lucide-react';
-import { SUCCESS_PATTERNS, PHRASE_TEMPLATES } from '@/data/gyomu-kaizen-success-patterns';
+import { SUCCESS_PATTERNS } from '@/data/gyomu-kaizen-success-patterns';
 import { DocumentGenerator } from '@/utils/document-generator';
 import { AIReviewer } from '@/services/ai-reviewer';
 import { AIReviewResult } from '@/types/success-patterns';
@@ -124,26 +124,23 @@ export default function QuickApplicationFlow() {
         p => p.industry === stepData.step1?.industry
       );
 
-      // フレーズテンプレートを使用して文章を生成
+      // 文章を生成
       const productivityPlan = `
-${PHRASE_TEMPLATES.opening.modernization}
-
 【導入設備】
 ${stepData.step2?.equipment}
 
 【期待される効果】
-${PHRASE_TEMPLATES.effectiveness.quantitative.replace('[X]', stepData.step2?.improvementRate || '30')}
-${industryPattern?.productivityMetrics[0]?.description || ''}
+${industryPattern?.patterns.productivityMetrics[0]?.improvementTarget || '生産性30%向上'}を目指します。
+${industryPattern?.patterns.productivityMetrics[0]?.name || ''}の測定により、${stepData.step2?.improvementRate || '30'}%の改善効果を検証します。
 
 【必要性】
-${PHRASE_TEMPLATES.necessity.efficiency}
 ${stepData.step5?.necessity || ''}
 
 【実現可能性】
-${industryPattern?.description || ''}
+${industryPattern?.patterns.commonPhrases[0] || '具体的な数値目標を設定し、PDCAサイクルで継続的に改善を行います。'}
 
 【持続可能性】
-${PHRASE_TEMPLATES.sustainability.continuous}
+生産性向上により生み出される収益増加分を従業員の賃金引上げ原資として確保します。
 `;
 
       const applicationData = {
@@ -262,7 +259,7 @@ ${PHRASE_TEMPLATES.sustainability.continuous}
                   <SelectValue placeholder="設備を選択" />
                 </SelectTrigger>
                 <SelectContent>
-                  {industryPattern?.equipmentPatterns.map((eq, idx) => (
+                  {industryPattern?.patterns.equipmentTypes.map((eq, idx) => (
                     <SelectItem key={idx} value={eq.name}>
                       {eq.name} - {eq.effect}
                     </SelectItem>
@@ -280,9 +277,9 @@ ${PHRASE_TEMPLATES.sustainability.continuous}
                   <SelectValue placeholder="指標を選択" />
                 </SelectTrigger>
                 <SelectContent>
-                  {industryPattern?.productivityMetrics.map((metric, idx) => (
-                    <SelectItem key={idx} value={metric.metric}>
-                      {metric.metric} - {metric.improvement}
+                  {industryPattern?.patterns.productivityMetrics.map((metric, idx) => (
+                    <SelectItem key={idx} value={metric.name}>
+                      {metric.name} - {metric.improvementTarget}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -302,7 +299,7 @@ ${PHRASE_TEMPLATES.sustainability.continuous}
               <Alert>
                 <Sparkles className="h-4 w-4" />
                 <AlertDescription>
-                  {industryPattern.industry}の成功事例：{industryPattern.description}
+                  {industryPattern.industry}の成功事例：{industryPattern.patterns.commonPhrases[0]}
                 </AlertDescription>
               </Alert>
             )}

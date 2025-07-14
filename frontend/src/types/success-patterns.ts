@@ -64,23 +64,24 @@ export interface AcceptedExample {
 
 // AI審査官の評価結果
 export interface AIReviewResult {
-  totalScore: number // 総合スコア（0-100）
-  breakdown: {
+  applicationId: string
+  overallScore: number // 総合スコア（0-100）
+  sectionScores: {
     necessity: number // 必要性スコア
     feasibility: number // 実現可能性スコア
     effectiveness: number // 効果性スコア
     sustainability: number // 持続性スコア
-    clarity: number // 明確性スコア
   }
   weakPoints: WeakPoint[]
   suggestions: Suggestion[]
-  estimatedAcceptanceRate: number // 推定採択率
-  similarSuccessfulCases: AcceptedExample[] // 類似の成功事例
+  reviewDate: string
+  reviewerComments: string
+  improvementPotential: number // 改善可能性
 }
 
 // 弱点
 export interface WeakPoint {
-  field: string // フィールド名
+  section: string // セクション名
   issue: string // 問題点
   severity: 'high' | 'medium' | 'low'
   impact: string // 採択への影響
@@ -88,11 +89,10 @@ export interface WeakPoint {
 
 // 改善提案
 export interface Suggestion {
-  field: string
-  original: string // 元の文章
-  improved: string // 改善案
+  section: string
+  currentContent: string // 現在の内容
+  suggestedContent: string // 改善案
   reason: string // 改善理由
-  expectedScoreImprovement: number
 }
 
 // クイック申請フロー

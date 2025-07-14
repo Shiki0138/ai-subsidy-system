@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { 
   TrendingUp, 
   Factory, 
@@ -61,15 +61,15 @@ export default function SuccessPatternDisplay() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
-                        {pattern.equipmentPatterns.map((eq, idx) => (
+                        {pattern.patterns.equipmentTypes.map((eq, idx) => (
                           <div key={idx} className="border rounded-lg p-3">
                             <div className="flex justify-between items-start mb-2">
                               <h4 className="font-semibold">{eq.name}</h4>
-                              <Badge variant="outline">{eq.cost}</Badge>
+                              <Badge variant="outline">{eq.priceRange.min.toLocaleString()}円〜</Badge>
                             </div>
                             <p className="text-sm text-gray-600 mb-2">{eq.effect}</p>
                             <Badge className="text-xs" variant="secondary">
-                              採択率: {eq.acceptanceRate}
+                              採択スコア: {eq.acceptanceScore}
                             </Badge>
                           </div>
                         ))}
@@ -86,13 +86,13 @@ export default function SuccessPatternDisplay() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
-                        {pattern.productivityMetrics.map((metric, idx) => (
+                        {pattern.patterns.productivityMetrics.map((metric, idx) => (
                           <div key={idx} className="border rounded-lg p-3">
                             <div className="flex justify-between items-center mb-2">
-                              <h4 className="font-semibold">{metric.metric}</h4>
-                              <Badge variant="default">{metric.improvement}</Badge>
+                              <h4 className="font-semibold">{metric.name}</h4>
+                              <Badge variant="default">{metric.improvementTarget}</Badge>
                             </div>
-                            <p className="text-sm text-gray-600">{metric.description}</p>
+                            <p className="text-sm text-gray-600">{metric.measurementMethod}</p>
                           </div>
                         ))}
                       </div>
@@ -111,14 +111,14 @@ export default function SuccessPatternDisplay() {
                     <div className="grid md:grid-cols-2 gap-4">
                       <div>
                         <h4 className="font-semibold mb-2">推奨アプローチ</h4>
-                        <p className="text-sm text-gray-600 mb-2">{pattern.wageStrategy.approach}</p>
-                        <Badge>{pattern.wageStrategy.timing}</Badge>
+                        <p className="text-sm text-gray-600 mb-2">{pattern.patterns.wageIncreaseStrategies[0]?.sustainability}</p>
+                        <Badge>{pattern.patterns.wageIncreaseStrategies[0]?.timing}</Badge>
                       </div>
                       <div>
                         <h4 className="font-semibold mb-2">期待される効果</h4>
                         <ul className="list-disc list-inside text-sm text-gray-600">
-                          {pattern.wageStrategy.benefits.map((benefit, idx) => (
-                            <li key={idx}>{benefit}</li>
+                          {pattern.patterns.commonPhrases.map((phrase, idx) => (
+                            <li key={idx}>{phrase}</li>
                           ))}
                         </ul>
                       </div>
@@ -129,7 +129,7 @@ export default function SuccessPatternDisplay() {
                 <Alert>
                   <Info className="h-4 w-4" />
                   <AlertDescription>
-                    <strong>成功のポイント:</strong> {pattern.description}
+                    <strong>成功のポイント:</strong> {pattern.patterns.commonPhrases[0]}
                   </AlertDescription>
                 </Alert>
               </TabsContent>

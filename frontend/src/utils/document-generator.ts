@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import createReport from 'docx-templates';
+// import createReport from 'docx-templates';
 // import { saveAs } from 'file-saver';
 
 // ファイルダウンロード関数
@@ -138,20 +138,24 @@ export class DocumentGenerator {
       }
       
       // データをテンプレートに適用
-      const buffer = await createReport({
-        template,
-        data: {
-          ...data,
-          申請日: new Date().toLocaleDateString('ja-JP'),
-          年度: new Date().getFullYear()
-        }
-      });
+      // const buffer = await createReport({
+      //   template,
+      //   data: {
+      //     ...data,
+      //     申請日: new Date().toLocaleDateString('ja-JP'),
+      //     年度: new Date().getFullYear()
+      //   }
+      // });
+      
+      // 一時的なフォールバック - 単純なテキストファイルを生成
+      const content = this.generateTextContent(data);
+      const buffer = new TextEncoder().encode(content);
       
       // ファイルを保存
       const blob = new Blob([buffer], { 
-        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+        type: 'text/plain;charset=utf-8' 
       });
-      saveAs(blob, `業務改善助成金申請書_${new Date().toISOString().split('T')[0]}.docx`);
+      saveAs(blob, `業務改善助成金申請書_${new Date().toISOString().split('T')[0]}.txt`);
     } catch (error) {
       console.error('DOCX生成エラー:', error);
       throw error;
@@ -183,6 +187,39 @@ export class DocumentGenerator {
 </w:document>`;
     
     return new TextEncoder().encode(templateContent).buffer;
+  }
+
+  private static generateTextContent(data: DocumentData): string {
+    return `
+業務改善助成金申請書
+
+申請日: ${new Date().toLocaleDateString('ja-JP')}
+年度: ${new Date().getFullYear()}
+
+1. 申請事業者情報
+事業者名: ${data.companyName || ''}
+代表者: ${data.representativeName || ''}
+所在地: ${data.address || ''}
+業種: ${data.industry || ''}
+従業員数: ${data.employeeCount || ''}
+現在の最低賃金: ${data.currentMinimumWage || ''}円
+
+2. 生産性向上計画
+${data.productivityPlan || ''}
+
+3. 賃金引上げ計画
+目標賃金: ${data.targetWage || ''}円
+引上げ対象労働者数: ${data.targetEmployeeCount || ''}名
+引上げ実施予定日: ${data.wageIncreaseDate || ''}
+
+4. 所要経費
+総額: ${data.totalCost || ''}円
+内訳:
+${data.costBreakdown || ''}
+
+5. 導入設備
+${data.equipment || ''}
+`;
   }
 
   static async generateFromOfficialTemplate(

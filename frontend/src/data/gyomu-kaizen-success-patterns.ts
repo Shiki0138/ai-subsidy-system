@@ -381,8 +381,9 @@ export const ACCEPTED_EXAMPLES: AcceptedExample[] = [
 ]
 
 // 審査員が重視するポイント
-export const REVIEWER_FOCUS_POINTS = {
+export const REVIEWER_POINTS = {
   necessity: {
+    label: '必要性',
     weight: 25,
     checkPoints: [
       '現状の課題が具体的に記載されているか',
@@ -391,6 +392,7 @@ export const REVIEWER_FOCUS_POINTS = {
     ]
   },
   feasibility: {
+    label: '実現可能性',
     weight: 25,
     checkPoints: [
       '実施計画が具体的で実現可能か',
@@ -399,6 +401,7 @@ export const REVIEWER_FOCUS_POINTS = {
     ]
   },
   effectiveness: {
+    label: '効果性',
     weight: 25,
     checkPoints: [
       '生産性向上の効果が定量的に示されているか',
@@ -407,6 +410,7 @@ export const REVIEWER_FOCUS_POINTS = {
     ]
   },
   sustainability: {
+    label: '持続性',
     weight: 25,
     checkPoints: [
       '効果の持続性が期待できるか',
