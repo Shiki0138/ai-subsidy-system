@@ -76,40 +76,58 @@ export function Step2Client() {
 
     setIsAnalyzing(true)
     try {
-      // 実際の実装では外部APIを使用してWebサイトを分析
-      // ここではモック実装
-      await new Promise(resolve => setTimeout(resolve, 3000))
+      // Use the actual API to analyze the website
+      const response = await fetch('/api/company/analyze-website', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: websiteUrl })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Website analysis failed')
+      }
+
+      const analysisData = await response.json()
       
-      const mockAnalysis: AnalysisResult = {
+      // Transform the response to match our AnalysisResult format
+      const analysis: AnalysisResult = {
         isAnalyzed: true,
-        confidence: 85,
+        confidence: analysisData.confidence || 80,
         extractedInfo: {
-          companyName: 'デモ株式会社',
-          businessDescription: 'IT関連サービスを提供する企業。Webアプリケーション開発、システム構築、デジタルマーケティング支援を主力事業とする。',
-          industry: 'IT・ソフトウェア',
-          foundedYear: '2015',
-          employeeCount: '25名',
-          businessAreas: ['Webアプリケーション開発', 'システム構築', 'デジタルマーケティング'],
+          companyName: analysisData.companyName || '',
+          businessDescription: analysisData.businessType || '',
+          industry: analysisData.businessType || '',
+          foundedYear: analysisData.establishedYear?.toString() || '',
+          employeeCount: analysisData.companySize === 'small' ? '1-50名' : 
+                        analysisData.companySize === 'medium' ? '51-300名' : '301名以上',
+          businessAreas: analysisData.mainServices || [],
           contactInfo: {
-            address: '東京都渋谷区〇〇1-2-3',
-            phone: '03-1234-5678',
-            email: 'info@demo.co.jp'
+            address: analysisData.address || '',
+            phone: analysisData.phone || '',
+            email: analysisData.email || ''
           }
         },
-        suggestions: [
-          '事業内容がIT関連のため、IT導入補助金が最適です',
-          '従業員数から小規模事業者持続化補助金も対象となります',
-          '売上規模の詳細情報があると、より精度の高い提案が可能です'
+        suggestions: analysisData.subsidyRecommendations || [
+          '詳細な分析結果に基づいて、最適な補助金をご提案します'
         ]
       }
 
-      setAnalysisResult(mockAnalysis)
+      // Also populate additional fields if available
+      if (analysisData.strengths) {
+        analysis.suggestions.push(...analysisData.strengths.map((s: string) => `強み: ${s}`))
+      }
+
+      setAnalysisResult(analysis)
       setCompanyInfo(prev => ({
         ...prev,
-        ...mockAnalysis.extractedInfo
+        ...analysis.extractedInfo
       }))
     } catch (error) {
       console.error('Website analysis failed:', error)
+      alert('ホームページの分析に失敗しました。URLを確認してください。')
     } finally {
       setIsAnalyzing(false)
     }

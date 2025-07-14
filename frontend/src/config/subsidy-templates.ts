@@ -451,11 +451,162 @@ export const MONOZUKURI_TEMPLATE: SubsidyTemplate = {
   pdfTemplate: 'monozukuri-form-2024'
 }
 
+// 業務改善助成金のテンプレート（簡易版）
+export const GYOMU_KAIZEN_TEMPLATE: SubsidyTemplate = {
+  id: 'gyomu-kaizen-2024',
+  name: '業務改善助成金',
+  version: '2024年度版',
+  lastUpdated: '2024-06-01',
+  description: '生産性向上のための設備投資等と賃金引上げを支援',
+  sections: [
+    {
+      id: 'basic-info',
+      title: '1. 申請事業者情報',
+      fields: [
+        {
+          id: 'company_name',
+          label: '事業場名称',
+          type: 'text',
+          required: true,
+          maxLength: 100
+        },
+        {
+          id: 'address',
+          label: '事業場所在地',
+          type: 'text',
+          required: true,
+          maxLength: 200
+        },
+        {
+          id: 'industry',
+          label: '業種',
+          type: 'select',
+          required: true,
+          options: ['製造業', '建設業', '情報通信業', '運輸業', '卸売業', '小売業', '宿泊業', '飲食サービス業', 'サービス業', 'その他']
+        },
+        {
+          id: 'employees',
+          label: '労働者数',
+          type: 'number',
+          required: true,
+          validation: { min: 1, max: 100 }
+        },
+        {
+          id: 'current_min_wage',
+          label: '現在の事業場内最低賃金（円）',
+          type: 'number',
+          required: true,
+          validation: { min: 800, max: 2000 }
+        }
+      ]
+    },
+    {
+      id: 'improvement-plan',
+      title: '2. 生産性向上計画',
+      fields: [
+        {
+          id: 'improvement_content',
+          label: '生産性向上の取組内容',
+          type: 'textarea',
+          required: true,
+          maxLength: 1000,
+          rows: 8,
+          aiSuggestion: true,
+          placeholder: '導入する設備・システム、業務改善の具体的内容を記載'
+        },
+        {
+          id: 'productivity_effect',
+          label: '期待される生産性向上効果',
+          type: 'textarea',
+          required: true,
+          maxLength: 600,
+          rows: 5,
+          aiSuggestion: true,
+          placeholder: '時間短縮、品質向上、売上増加等の具体的効果を数値と共に記載'
+        },
+        {
+          id: 'equipment_list',
+          label: '導入設備・機器',
+          type: 'textarea',
+          required: true,
+          maxLength: 500,
+          rows: 4,
+          placeholder: '設備名、型番、価格等を記載'
+        }
+      ]
+    },
+    {
+      id: 'wage-increase',
+      title: '3. 賃金引上げ計画',
+      fields: [
+        {
+          id: 'target_min_wage',
+          label: '引上げ後の事業場内最低賃金（円）',
+          type: 'number',
+          required: true,
+          validation: { min: 900, max: 2500 }
+        },
+        {
+          id: 'wage_increase_amount',
+          label: '賃金引上げ額（円）',
+          type: 'number',
+          required: true,
+          validation: { min: 30, max: 500 }
+        },
+        {
+          id: 'affected_workers',
+          label: '賃金引上げ対象労働者数',
+          type: 'number',
+          required: true,
+          validation: { min: 1, max: 100 }
+        },
+        {
+          id: 'implementation_date',
+          label: '賃金引上げ実施予定日',
+          type: 'date',
+          required: true
+        }
+      ]
+    },
+    {
+      id: 'budget',
+      title: '4. 所要経費',
+      fields: [
+        {
+          id: 'total_cost',
+          label: '事業費総額（円）',
+          type: 'number',
+          required: true,
+          validation: { min: 100000, max: 6000000 }
+        },
+        {
+          id: 'subsidy_amount',
+          label: '助成金申請額（円）',
+          type: 'number',
+          required: true,
+          validation: { min: 50000, max: 6000000 }
+        },
+        {
+          id: 'cost_breakdown',
+          label: '経費内訳',
+          type: 'textarea',
+          required: true,
+          maxLength: 500,
+          rows: 4,
+          placeholder: '設備費、委託費、その他の経費を項目別に記載'
+        }
+      ]
+    }
+  ],
+  pdfTemplate: 'gyomu-kaizen-form-2024'
+}
+
 // 全テンプレートのマップ
 export const SUBSIDY_TEMPLATES: Record<string, SubsidyTemplate> = {
   'jizokuka': JIZOKUKA_TEMPLATE,
   'it-subsidy': IT_TEMPLATE,
-  'monozukuri': MONOZUKURI_TEMPLATE
+  'monozukuri': MONOZUKURI_TEMPLATE,
+  'gyomu-kaizen': GYOMU_KAIZEN_TEMPLATE
 }
 
 // テンプレートから必要なフィールドを取得

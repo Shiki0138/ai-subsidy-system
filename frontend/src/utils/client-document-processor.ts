@@ -1,6 +1,8 @@
 // クライアントサイド用のドキュメント処理ユーティリティ
 
 import mammoth from 'mammoth'
+import { PDFDocument } from 'pdf-lib'
+import * as XLSX from 'xlsx'
 
 // 募集要項の要件を構造化
 export interface RequirementSection {
@@ -38,7 +40,97 @@ export async function readDocxContent(file: File): Promise<string> {
   }
 }
 
-// シンプルなテキスト読み込み（PDFの場合は外部サービスを使用するか、テキストファイルを推奨）
+// PDFファイルを読み込んでテキストを抽出
+export async function readPdfContent(file: File): Promise<string> {
+  try {
+    const arrayBuffer = await file.arrayBuffer()
+    const pdfDoc = await PDFDocument.load(arrayBuffer)
+    const pages = pdfDoc.getPages()
+    
+    let text = ''
+    
+    // 各ページからテキストを抽出（簡易版）
+    // 注：pdf-libは主にPDF作成用で、テキスト抽出は限定的
+    // より高度な抽出が必要な場合は、サーバーサイドでpdf-parseを使用
+    for (const page of pages) {
+      // PDFのメタデータやフォーム情報を取得
+      const { width, height } = page.getSize()
+      text += `[ページサイズ: ${width}x${height}]\n`
+      
+      // フォームフィールドがある場合は抽出
+      const form = pdfDoc.getForm()
+      const fields = form.getFields()
+      if (fields.length > 0) {
+        text += '\n[フォームフィールド]\n'
+        fields.forEach(field => {
+          const name = field.getName()
+          text += `${name}: [入力フィールド]\n`
+        })
+      }
+    }
+    
+    // PDFからの完全なテキスト抽出は制限があるため、注意喚起
+    if (text.length < 100) {
+      text = `PDFファイルが読み込まれました。\n\n` +
+             `※ 注意：PDFからの自動テキスト抽出は制限があります。\n` +
+             `より正確な内容抽出のため、以下をお勧めします：\n` +
+             `1. PDFをテキストファイル（.txt）に変換してアップロード\n` +
+             `2. PDFの内容をDOCXファイルにコピーしてアップロード\n` +
+             `3. 重要な部分を手動でテキストファイルに転記\n\n` +
+             `ファイル名: ${file.name}\n` +
+             `ファイルサイズ: ${(file.size / 1024).toFixed(2)} KB\n` +
+             `ページ数: ${pages.length}`
+    }
+    
+    return text
+  } catch (error) {
+    console.error('PDF読み込みエラー:', error)
+    throw new Error('PDFファイルの読み込みに失敗しました。テキストファイルまたはDOCXファイルの使用をお勧めします。')
+  }
+}
+
+// Excelファイルを読み込んでテキストを抽出
+export async function readExcelContent(file: File): Promise<string> {
+  try {
+    const arrayBuffer = await file.arrayBuffer()
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+    
+    let text = `Excelファイル: ${file.name}\n\n`
+    
+    // 各シートを処理
+    workbook.SheetNames.forEach((sheetName, index) => {
+      text += `【シート${index + 1}: ${sheetName}】\n`
+      
+      const worksheet = workbook.Sheets[sheetName]
+      
+      // CSVフォーマットでテキスト化
+      const csv = XLSX.utils.sheet_to_csv(worksheet, {
+        blankrows: false,
+        skipHidden: true
+      })
+      
+      // HTMLテーブル形式でも取得（より構造化された情報）
+      const html = XLSX.utils.sheet_to_html(worksheet, {
+        header: '',
+        footer: ''
+      })
+      
+      // テキストとして追加
+      text += csv + '\n\n'
+      
+      // セル範囲情報
+      const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1')
+      text += `データ範囲: ${range.s.c + 1}列 × ${range.e.r + 1}行\n\n`
+    })
+    
+    return text
+  } catch (error) {
+    console.error('Excel読み込みエラー:', error)
+    throw new Error('Excelファイルの読み込みに失敗しました')
+  }
+}
+
+// シンプルなテキスト読み込み
 export async function readTextFile(file: File): Promise<string> {
   try {
     const text = await file.text()
@@ -46,6 +138,23 @@ export async function readTextFile(file: File): Promise<string> {
   } catch (error) {
     console.error('ファイル読み込みエラー:', error)
     throw new Error('ファイルの読み込みに失敗しました')
+  }
+}
+
+// ファイルタイプに応じて適切な読み込み関数を選択
+export async function readFileContent(file: File): Promise<string> {
+  const fileName = file.name.toLowerCase()
+  
+  if (fileName.endsWith('.docx')) {
+    return await readDocxContent(file)
+  } else if (fileName.endsWith('.pdf')) {
+    return await readPdfContent(file)
+  } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+    return await readExcelContent(file)
+  } else if (fileName.endsWith('.txt')) {
+    return await readTextFile(file)
+  } else {
+    throw new Error(`サポートされていないファイル形式です: ${file.name}`)
   }
 }
 

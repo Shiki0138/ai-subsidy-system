@@ -14,6 +14,7 @@ import {
   ArrowTrendingUpIcon,
   BoltIcon,
   ArrowRightIcon,
+  CircleStackIcon,
 } from '@heroicons/react/24/outline'
 import { useAuth } from '@/hooks'
 import { useQuery } from '@tanstack/react-query'
@@ -428,6 +429,15 @@ export function DashboardClient() {
                   >
                     <DocumentTextIcon className="h-5 w-5 mr-2" aria-hidden="true" />
                     申請書一覧
+                  </Link>
+                  
+                  <Link
+                    href="/dashboard/knowledge-base"
+                    className="w-full btn-outline flex items-center justify-center py-3 hover:bg-gray-50"
+                    aria-label="知識ベース管理"
+                  >
+                    <CircleStackIcon className="h-5 w-5 mr-2" aria-hidden="true" />
+                    知識ベース管理
                   </Link>
                   
                   <Link

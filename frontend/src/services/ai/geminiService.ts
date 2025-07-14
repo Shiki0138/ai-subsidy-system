@@ -351,7 +351,7 @@ ${JSON.stringify(companyData, null, 2)}
     
     try {
       const response = await fetch(
-        `${this.baseUrl}/models/gemini-pro:generateContent?key=${this.apiKey}`,
+        `${this.baseUrl}/models/gemini-1.5-flash:generateContent?key=${this.apiKey}`,
         {
           method: 'POST',
           headers: {
