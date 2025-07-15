@@ -1,4 +1,5 @@
-import { PDFDocument, PDFForm, PDFTextField, PDFCheckBox, PDFDropdown, rgb, StandardFonts } from 'pdf-lib';
+// PDF-libはクライアントサイドでのみ動作するため、動的インポートを使用
+let PDFDocument: any, PDFForm: any, PDFTextField: any, PDFCheckBox: any, PDFDropdown: any, rgb: any, StandardFonts: any;
 import { BusinessImprovementApplicationData } from './business-improvement-pdf';
 
 export interface PDFFieldMapping {
@@ -10,8 +11,28 @@ export interface PDFFieldMapping {
 }
 
 export class PDFFormFiller {
-  private pdfDoc: PDFDocument | null = null;
-  private form: PDFForm | null = null;
+  private pdfDoc: any = null;
+  private form: any = null;
+  private initialized = false;
+
+  private async initializePDFLib() {
+    if (this.initialized) return;
+    
+    if (typeof window === 'undefined') {
+      throw new Error('PDF-lib can only be used in the browser');
+    }
+    
+    const pdfLib = await import('pdf-lib');
+    PDFDocument = pdfLib.PDFDocument;
+    PDFForm = pdfLib.PDFForm;
+    PDFTextField = pdfLib.PDFTextField;
+    PDFCheckBox = pdfLib.PDFCheckBox;
+    PDFDropdown = pdfLib.PDFDropdown;
+    rgb = pdfLib.rgb;
+    StandardFonts = pdfLib.StandardFonts;
+    
+    this.initialized = true;
+  }
 
   // 業務改善助成金申請書のフィールドマッピング
   private fieldMappings: PDFFieldMapping[] = [
@@ -97,6 +118,7 @@ export class PDFFormFiller {
 
   async loadPDFTemplate(templateBuffer: ArrayBuffer): Promise<void> {
     try {
+      await this.initializePDFLib();
       this.pdfDoc = await PDFDocument.load(templateBuffer);
       this.form = this.pdfDoc.getForm();
       console.log('PDF template loaded successfully');
@@ -257,6 +279,7 @@ export class PDFFormFiller {
       throw new Error('PDF template not loaded');
     }
 
+    await this.initializePDFLib();
     const pages = this.pdfDoc.getPages();
     const pageCount = pages.length;
     
@@ -267,8 +290,8 @@ export class PDFFormFiller {
     if (this.form) {
       const fields = this.form.getFields();
       hasFormFields = fields.length > 0;
-      fieldNames = fields.map(f => f.getName());
-      formFieldsInfo = fields.map(field => ({
+      fieldNames = fields.map((f: any) => f.getName());
+      formFieldsInfo = fields.map((field: any) => ({
         name: field.getName(),
         type: field.constructor.name,
         isReadOnly: field.isReadOnly(),
@@ -284,18 +307,26 @@ export class PDFFormFiller {
   }
 }
 
-// 使用例
+// 使用例（ブラウザ環境でのみ動作）
 export async function fillBusinessImprovementPDF(
   templateBuffer: ArrayBuffer,
   applicationData: BusinessImprovementApplicationData
 ): Promise<Uint8Array> {
+  if (typeof window === 'undefined') {
+    throw new Error('PDF operations can only be performed in the browser');
+  }
+  
   const filler = new PDFFormFiller();
   await filler.loadPDFTemplate(templateBuffer);
   return await filler.fillPDFForm(applicationData);
 }
 
-// PDFテンプレートの分析
+// PDFテンプレートの分析（ブラウザ環境でのみ動作）
 export async function analyzePDFTemplate(templateBuffer: ArrayBuffer) {
+  if (typeof window === 'undefined') {
+    throw new Error('PDF operations can only be performed in the browser');
+  }
+  
   const filler = new PDFFormFiller();
   await filler.loadPDFTemplate(templateBuffer);
   return await filler.analyzePDFTemplate();

@@ -4,7 +4,19 @@ import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
-import UnifiedApplicationFlow from '@/components/business-improvement/UnifiedApplicationFlow';
+import dynamic from 'next/dynamic';
+
+const UnifiedApplicationFlow = dynamic(
+  () => import('@/components/business-improvement/UnifiedApplicationFlow'),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="flex justify-center items-center py-12">
+        <div className="text-gray-500">申請フォームを読み込み中...</div>
+      </div>
+    )
+  }
+);
 import SuccessPatternDisplay from '@/components/subsidy/SuccessPatternDisplay';
 import { 
   Sparkles, 

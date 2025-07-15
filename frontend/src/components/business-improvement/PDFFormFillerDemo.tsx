@@ -1,20 +1,46 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
-import { Upload, FileText, Download, AnalyzeIcon as Analysis } from 'lucide-react';
+import { Upload, FileText, Download, Search as Analysis } from 'lucide-react';
 import { PDFFormFiller, fillBusinessImprovementPDF, analyzePDFTemplate } from '@/utils/pdf-form-filler';
 import { BusinessImprovementApplicationData } from '@/utils/business-improvement-pdf';
 
-export default function PDFFormFillerDemo() {
+function PDFFormFillerDemo() {
   const [templateFile, setTemplateFile] = useState<File | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isFilling, setIsFilling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              PDF申請書フォーム埋め込みデモ
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <div className="text-gray-500">読み込み中...</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // デモ用のサンプルデータ
   const sampleApplicationData: BusinessImprovementApplicationData = {
@@ -279,3 +305,25 @@ export default function PDFFormFillerDemo() {
     </div>
   );
 }
+
+// Dynamic importでSSRをスキップ
+export default dynamic(() => Promise.resolve(PDFFormFillerDemo), {
+  ssr: false,
+  loading: () => (
+    <div className="max-w-4xl mx-auto p-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            PDF申請書フォーム埋め込みデモ
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <div className="text-gray-500">読み込み中...</div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+});
