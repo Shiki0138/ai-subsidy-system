@@ -52,6 +52,33 @@ export class BusinessImprovementAI {
     this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
   }
 
+  private async retryApiCall<T>(
+    apiCall: () => Promise<T>,
+    maxRetries: number = 3,
+    baseDelay: number = 1000
+  ): Promise<T> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await apiCall();
+      } catch (error: any) {
+        const isLastAttempt = attempt === maxRetries;
+        const isRetryableError = error?.message?.includes('503') || 
+                                error?.message?.includes('overloaded') ||
+                                error?.message?.includes('429');
+
+        if (isLastAttempt || !isRetryableError) {
+          throw error;
+        }
+
+        // 指数バックオフで待機
+        const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 1000;
+        console.log(`API呼び出し失敗 (試行 ${attempt}/${maxRetries}), ${Math.round(delay)}ms後にリトライ...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    throw new Error('Max retries exceeded');
+  }
+
   async analyzeAndGenerate(profile: CompanyProfile): Promise<AIAnalysisResult> {
     try {
       const analysis = await this.performComprehensiveAnalysis(profile);
@@ -110,9 +137,11 @@ export class BusinessImprovementAI {
 }
 `;
 
-    const result = await this.model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const result = await this.retryApiCall(async () => {
+      const response = await this.model.generateContent(prompt);
+      return await response.response;
+    });
+    const text = result.text();
 
     try {
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -172,9 +201,11 @@ ${JSON.stringify(SUCCESS_EXAMPLES)}
 - 継続性と実現可能性を示す
 `;
 
-    const result = await this.model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const result = await this.retryApiCall(async () => {
+      const response = await this.model.generateContent(prompt);
+      return await response.response;
+    });
+    const text = result.text();
 
     try {
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -314,9 +345,11 @@ ${JSON.stringify(profile)}
 `;
 
     try {
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      return response.text();
+      const result = await this.retryApiCall(async () => {
+        const response = await this.model.generateContent(prompt);
+        return await response.response;
+      });
+      return result.text();
     } catch (error) {
       console.error('文章最適化エラー:', error);
       return currentText;

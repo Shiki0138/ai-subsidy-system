@@ -194,9 +194,24 @@ export default function UnifiedApplicationFlow() {
 
       setStep(3);
       setHasUnsavedChanges(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('AI生成エラー:', error);
-      alert('AI生成中にエラーが発生しました。入力内容を確認して再試行してください。');
+      
+      let errorMessage = 'AI生成中にエラーが発生しました。';
+      
+      if (error?.message?.includes('503') || error?.message?.includes('overloaded')) {
+        errorMessage = 'AIサーバーが混雑しています。しばらく時間をおいてから再試行してください。（通常1-2分で回復します）';
+      } else if (error?.message?.includes('429')) {
+        errorMessage = 'リクエスト制限に達しました。少し時間をおいてから再試行してください。';
+      } else if (error?.message?.includes('API key')) {
+        errorMessage = 'APIキーの設定に問題があります。管理者にお問い合わせください。';
+      } else if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
+        errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認して再試行してください。';
+      } else {
+        errorMessage += ' 入力内容を確認して再試行してください。';
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsGenerating(false);
     }
@@ -228,9 +243,18 @@ export default function UnifiedApplicationFlow() {
         [section]: optimizedText
       } : null);
       setHasUnsavedChanges(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('最適化エラー:', error);
-      alert('文章の最適化中にエラーが発生しました。');
+      
+      let errorMessage = '文章の最適化中にエラーが発生しました。';
+      
+      if (error?.message?.includes('503') || error?.message?.includes('overloaded')) {
+        errorMessage = 'AIサーバーが混雑しています。しばらく時間をおいてから再試行してください。';
+      } else if (error?.message?.includes('429')) {
+        errorMessage = 'リクエスト制限に達しました。少し時間をおいてから再試行してください。';
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsGenerating(false);
       setEditingSection(null);
@@ -506,7 +530,10 @@ export default function UnifiedApplicationFlow() {
                   <Sparkles className="h-4 w-4" />
                   <AlertDescription>
                     <strong>企業情報:</strong> {basicInfo.companyName}（{basicInfo.industry}・{basicInfo.employeeCount}名）<br />
-                    <strong>目標:</strong> 時給{basicInfo.targetWageIncrease}円引上げ
+                    <strong>目標:</strong> 時給{basicInfo.targetWageIncrease}円引上げ<br />
+                    <span className="text-blue-600 text-sm mt-1 block">
+                      ⚠️ AIサーバーが混雑している場合、生成に時間がかかることがあります
+                    </span>
                   </AlertDescription>
                 </Alert>
 
@@ -519,7 +546,7 @@ export default function UnifiedApplicationFlow() {
                   {isGenerating ? (
                     <>
                       <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
-                      AI生成中...（最適化処理実行中）
+                      AI生成中...（サーバー負荷により時間がかかる場合があります）
                     </>
                   ) : (
                     <>
