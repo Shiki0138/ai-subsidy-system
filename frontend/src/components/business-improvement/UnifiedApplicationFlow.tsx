@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { BusinessImprovementAI, CompanyProfile } from '@/services/business-improvement-ai';
 import { generateBusinessImprovementWord } from '@/utils/business-improvement-pdf';
-import { ImprovedBusinessImprovementPDFDownloadButton } from '@/utils/business-improvement-pdf-react-improved';
+import SafePDFButton from '@/components/ui/SafePDFButton';
 import { Tooltip } from '@/components/ui/Tooltip';
 
 interface BasicInfo {
@@ -1072,8 +1072,9 @@ export default function UnifiedApplicationFlow() {
                 </div>
 
                 <div className="flex gap-4 justify-center">
-                  <ImprovedBusinessImprovementPDFDownloadButton 
+                  <SafePDFButton 
                     data={finalApplication} 
+                    fileName={`業務改善助成金申請書_${finalApplication.basicInfo.companyName}_${new Date().toISOString().split('T')[0]}.pdf`}
                     className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-8"
                   />
                   <Tooltip content="Word形式でダウンロード" placement="top">

@@ -22,7 +22,7 @@ import {
 import { BusinessImprovementAI, CompanyProfile, AIAnalysisResult } from '@/services/business-improvement-ai';
 import { EQUIPMENT_CATEGORIES, SUBSIDY_RATES } from '@/data/business-improvement-guideline';
 import { generateBusinessImprovementWord } from '@/utils/business-improvement-pdf';
-import { ImprovedBusinessImprovementPDFDownloadButton } from '@/utils/business-improvement-pdf-react-improved';
+import SafePDFButton from '@/components/ui/SafePDFButton';
 import { Tooltip } from '@/components/ui/Tooltip';
 
 interface FormData extends CompanyProfile {
@@ -566,8 +566,9 @@ export default function AutoApplicationForm() {
 
                 <div className="flex gap-4 justify-center">
                   {generatedApplication && (
-                    <ImprovedBusinessImprovementPDFDownloadButton 
+                    <SafePDFButton 
                       data={generatedApplication} 
+                      fileName={`業務改善助成金申請書_${generatedApplication.basicInfo.companyName}_${new Date().toISOString().split('T')[0]}.pdf`}
                       className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-8"
                     />
                   )}

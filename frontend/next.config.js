@@ -5,6 +5,43 @@ const nextConfig = {
     serverComponentsExternalPackages: ['@prisma/client'],
   },
 
+  // PDF関連ライブラリのSSR問題を解決
+  webpack: (config, { isServer }) => {
+    // PDF関連ライブラリをクライアントサイドのみに制限
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        canvas: false,
+        fs: false,
+        net: false,
+        tls: false,
+        child_process: false,
+      };
+    }
+
+    // PDF関連ライブラリをexternalに設定（サーバーサイドで実行しない）
+    config.externals = config.externals || [];
+    if (isServer) {
+      config.externals.push(
+        'pdf-lib',
+        '@react-pdf/renderer',
+        'fontkit',
+        'pdfjs-dist'
+      );
+    }
+
+    // Bundle分析 (開発時のみ)
+    if (process.env.ANALYZE === 'true') {
+      config.plugins.push(
+        new (require('@next/bundle-analyzer'))({
+          enabled: true,
+        })
+      );
+    }
+
+    return config;
+  },
+
   // TypeScript設定
   typescript: {
     ignoreBuildErrors: true,
@@ -62,17 +99,6 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
   poweredByHeader: false,
 
-  // Bundle分析 (開発時のみ)
-  ...(process.env.ANALYZE === 'true' && {
-    webpack: (config) => {
-      config.plugins.push(
-        new (require('@next/bundle-analyzer'))({
-          enabled: true,
-        })
-      );
-      return config;
-    },
-  }),
 };
 
 module.exports = nextConfig;
