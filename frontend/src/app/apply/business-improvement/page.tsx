@@ -4,10 +4,8 @@ import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
-import AutoApplicationForm from '@/components/business-improvement/AutoApplicationForm';
-import QuickApplicationFlow from '@/components/subsidy/QuickApplicationFlow';
+import UnifiedApplicationFlow from '@/components/business-improvement/UnifiedApplicationFlow';
 import SuccessPatternDisplay from '@/components/subsidy/SuccessPatternDisplay';
-import { GuidelineBasedForm } from '@/components/subsidy/GuidelineBasedForm';
 import { 
   Sparkles, 
   Zap, 
@@ -20,7 +18,7 @@ import {
 } from 'lucide-react';
 
 export default function BusinessImprovementPage() {
-  const [activeTab, setActiveTab] = useState('ai-auto');
+  const [activeTab, setActiveTab] = useState('unified');
 
   const features = [
     {
@@ -94,62 +92,28 @@ export default function BusinessImprovementPage() {
 
           {/* メインコンテンツ */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-4 mb-8">
-              <TabsTrigger value="ai-auto" className="flex items-center gap-2">
+            <TabsList className="grid w-full grid-cols-2 mb-8">
+              <TabsTrigger value="unified" className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
-                AI自動作成
-              </TabsTrigger>
-              <TabsTrigger value="quick" className="flex items-center gap-2">
-                <Zap className="h-4 w-4" />
-                クイック申請
-              </TabsTrigger>
-              <TabsTrigger value="guideline" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                募集要項ベース
+                申請書作成
               </TabsTrigger>
               <TabsTrigger value="patterns" className="flex items-center gap-2">
                 <Lightbulb className="h-4 w-4" />
-                成功パターン
+                成功パターン研究
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="ai-auto" className="mt-6">
+            <TabsContent value="unified" className="mt-6">
               <div className="mb-6">
                 <Alert className="bg-gradient-to-r from-blue-50 to-green-50 border-blue-200">
                   <Sparkles className="h-4 w-4 text-blue-600" />
                   <AlertDescription className="text-blue-800">
-                    <strong>🎯 最新AI技術で採択率95%を目指す！</strong><br />
-                    企業情報を入力するだけで、AIが最適な申請戦略を分析し、採択確率を最大化する申請書を自動生成します。
+                    <strong>🎯 統一フローで簡単申請書作成！</strong><br />
+                    基本情報を入力 → AIが募集要項・成功事例を分析 → 最適化された申請書を生成 → PDF/Wordでダウンロード
                   </AlertDescription>
                 </Alert>
               </div>
-              <AutoApplicationForm />
-            </TabsContent>
-
-            <TabsContent value="quick" className="mt-6">
-              <div className="mb-6">
-                <Alert className="bg-yellow-50 border-yellow-200">
-                  <Zap className="h-4 w-4 text-yellow-600" />
-                  <AlertDescription className="text-yellow-800">
-                    <strong>⚡ 5ステップで素早く申請書作成</strong><br />
-                    基本情報、設備選択、賃金計画、経費計算、申請書生成の5つのステップで効率的に申請書を作成できます。
-                  </AlertDescription>
-                </Alert>
-              </div>
-              <QuickApplicationFlow />
-            </TabsContent>
-
-            <TabsContent value="guideline" className="mt-6">
-              <div className="mb-6">
-                <Alert className="bg-green-50 border-green-200">
-                  <FileText className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-800">
-                    <strong>📋 募集要項に完全準拠</strong><br />
-                    最新の募集要項（DOCX/TXT）をアップロードすると、その要件に完全に準拠した申請書を自動生成します。
-                  </AlertDescription>
-                </Alert>
-              </div>
-              <GuidelineBasedForm subsidyType="business-improvement" />
+              <UnifiedApplicationFlow />
             </TabsContent>
 
             <TabsContent value="patterns" className="mt-6">
@@ -158,7 +122,7 @@ export default function BusinessImprovementPage() {
                   <Lightbulb className="h-4 w-4 text-purple-600" />
                   <AlertDescription className="text-purple-800">
                     <strong>💡 採択成功パターンを学習</strong><br />
-                    過去の採択事例を分析し、業界別の成功パターンと効果的なフレーズを活用して申請書の質を向上させます。
+                    過去の採択事例を分析し、業界別の成功パターンと効果的なフレーズを確認できます。申請書作成の参考にご活用ください。
                   </AlertDescription>
                 </Alert>
               </div>
