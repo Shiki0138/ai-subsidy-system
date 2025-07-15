@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -17,7 +17,10 @@ import {
   CheckCircle,
   Edit3,
   Copy,
-  RefreshCw
+  RefreshCw,
+  Save,
+  Clock,
+  Trash2
 } from 'lucide-react';
 import { BusinessImprovementAI, CompanyProfile } from '@/services/business-improvement-ai';
 import { generateBusinessImprovementPDF, generateBusinessImprovementWord } from '@/utils/business-improvement-pdf';
@@ -47,6 +50,8 @@ interface GeneratedContent {
   expectedEffect: string;
 }
 
+const STORAGE_KEY = 'business-improvement-draft';
+
 export default function UnifiedApplicationFlow() {
   const [step, setStep] = useState(1);
   const [basicInfo, setBasicInfo] = useState<BasicInfo>({
@@ -68,14 +73,89 @@ export default function UnifiedApplicationFlow() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [finalApplication, setFinalApplication] = useState<any>(null);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const industries = [
     '製造業', '建設業', '運輸業', '飲食サービス業', 
     '小売業', '介護・福祉', 'IT・情報通信業', 'その他'
   ];
 
+  // 一時保存機能
+  useEffect(() => {
+    loadDraft();
+  }, []);
+
+  useEffect(() => {
+    if (hasUnsavedChanges) {
+      const timer = setTimeout(() => {
+        saveDraft();
+      }, 2000); // 2秒後に自動保存
+      return () => clearTimeout(timer);
+    }
+  }, [basicInfo, generatedContent, step, hasUnsavedChanges]);
+
+  const saveDraft = () => {
+    try {
+      const draftData = {
+        step,
+        basicInfo,
+        generatedContent,
+        finalApplication,
+        timestamp: new Date().toISOString()
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(draftData));
+      setLastSaved(new Date());
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      console.error('一時保存エラー:', error);
+    }
+  };
+
+  const loadDraft = () => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const draftData = JSON.parse(saved);
+        setStep(draftData.step || 1);
+        setBasicInfo(draftData.basicInfo || basicInfo);
+        setGeneratedContent(draftData.generatedContent || null);
+        setFinalApplication(draftData.finalApplication || null);
+        setLastSaved(new Date(draftData.timestamp));
+      }
+    } catch (error) {
+      console.error('下書き読み込みエラー:', error);
+    }
+  };
+
+  const clearDraft = () => {
+    if (confirm('下書きデータを削除しますか？この操作は取り消せません。')) {
+      localStorage.removeItem(STORAGE_KEY);
+      setStep(1);
+      setBasicInfo({
+        companyName: '',
+        industry: '',
+        employeeCount: 0,
+        currentMinWage: 1000,
+        targetWageIncrease: 45,
+        representative: '',
+        phone: '',
+        email: '',
+        address: '',
+        currentChallenges: '',
+        currentProcesses: '',
+        desiredEquipment: ''
+      });
+      setGeneratedContent(null);
+      setFinalApplication(null);
+      setLastSaved(null);
+      setHasUnsavedChanges(false);
+    }
+  };
+
   const handleInputChange = (field: keyof BasicInfo, value: any) => {
     setBasicInfo(prev => ({ ...prev, [field]: value }));
+    setHasUnsavedChanges(true);
   };
 
   const generateAIContent = async () => {
@@ -113,6 +193,7 @@ export default function UnifiedApplicationFlow() {
       });
 
       setStep(3);
+      setHasUnsavedChanges(true);
     } catch (error) {
       console.error('AI生成エラー:', error);
       alert('AI生成中にエラーが発生しました。入力内容を確認して再試行してください。');
@@ -146,6 +227,7 @@ export default function UnifiedApplicationFlow() {
         ...prev,
         [section]: optimizedText
       } : null);
+      setHasUnsavedChanges(true);
     } catch (error) {
       console.error('最適化エラー:', error);
       alert('文章の最適化中にエラーが発生しました。');
@@ -198,6 +280,7 @@ export default function UnifiedApplicationFlow() {
 
     setFinalApplication(applicationData);
     setStep(4);
+    setHasUnsavedChanges(true);
   };
 
   const calculateMaxSubsidy = () => {
@@ -532,10 +615,13 @@ export default function UnifiedApplicationFlow() {
                         <div className="space-y-3">
                           <Textarea
                             value={generatedContent[key as keyof GeneratedContent] as string}
-                            onChange={(e) => setGeneratedContent(prev => prev ? {
-                              ...prev,
-                              [key]: e.target.value
-                            } : null)}
+                            onChange={(e) => {
+                              setGeneratedContent(prev => prev ? {
+                                ...prev,
+                                [key]: e.target.value
+                              } : null);
+                              setHasUnsavedChanges(true);
+                            }}
                             rows={8}
                             className="text-sm"
                           />
@@ -653,11 +739,51 @@ export default function UnifiedApplicationFlow() {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">業務改善助成金 申請書作成</h1>
-        <p className="text-gray-600">
-          必要な情報を入力するだけで、募集要項と成功事例を踏まえた最適な申請書をAIが生成します
-        </p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">業務改善助成金 申請書作成</h1>
+            <p className="text-gray-600">
+              必要な情報を入力するだけで、募集要項と成功事例を踏まえた最適な申請書をAIが生成します
+            </p>
+          </div>
+          
+          {/* 一時保存状況表示 */}
+          <div className="text-right">
+            <div className="flex items-center gap-2 mb-2">
+              <Button variant="outline" size="sm" onClick={saveDraft}>
+                <Save className="h-4 w-4 mr-1" />
+                手動保存
+              </Button>
+              <Button variant="outline" size="sm" onClick={clearDraft}>
+                <Trash2 className="h-4 w-4 mr-1" />
+                下書き削除
+              </Button>
+            </div>
+            <div className="text-sm text-gray-500 flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {lastSaved ? (
+                <span>最終保存: {lastSaved.toLocaleTimeString()}</span>
+              ) : (
+                <span>未保存</span>
+              )}
+              {hasUnsavedChanges && (
+                <span className="text-orange-600 ml-2">●未保存の変更</span>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* 下書き復元通知 */}
+      {lastSaved && (
+        <Alert className="mb-6 bg-blue-50 border-blue-200">
+          <Save className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-800">
+            <strong>下書きが復元されました</strong><br />
+            最終保存: {lastSaved.toLocaleString()} のデータを読み込みました。
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* プログレスバー */}
       <div className="mb-8">
