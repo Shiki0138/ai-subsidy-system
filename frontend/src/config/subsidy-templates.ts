@@ -606,7 +606,8 @@ export const SUBSIDY_TEMPLATES: Record<string, SubsidyTemplate> = {
   'jizokuka': JIZOKUKA_TEMPLATE,
   'it-subsidy': IT_TEMPLATE,
   'monozukuri': MONOZUKURI_TEMPLATE,
-  'gyomu-kaizen': GYOMU_KAIZEN_TEMPLATE
+  'gyomu-kaizen': GYOMU_KAIZEN_TEMPLATE,
+  'business-improvement': GYOMU_KAIZEN_TEMPLATE // エイリアスとして追加
 }
 
 // テンプレートから必要なフィールドを取得
