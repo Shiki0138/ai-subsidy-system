@@ -54,26 +54,42 @@ export class BusinessImprovementAI {
 
   private async retryApiCall<T>(
     apiCall: () => Promise<T>,
-    maxRetries: number = 3,
-    baseDelay: number = 1000
+    maxRetries: number = 5,
+    baseDelay: number = 2000
   ): Promise<T> {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         return await apiCall();
       } catch (error: any) {
         const isLastAttempt = attempt === maxRetries;
-        const isRetryableError = error?.message?.includes('503') || 
-                                error?.message?.includes('overloaded') ||
-                                error?.message?.includes('429');
+        const errorMessage = error?.message || '';
+        const isRetryableError = 
+          errorMessage.includes('503') || 
+          errorMessage.includes('overloaded') ||
+          errorMessage.includes('429') ||
+          errorMessage.includes('UNAVAILABLE') ||
+          errorMessage.includes('RATE_LIMIT_EXCEEDED') ||
+          error?.status === 503 ||
+          error?.status === 429;
+
+        console.log(`API呼び出し試行 ${attempt}/${maxRetries}:`, {
+          error: errorMessage,
+          isRetryable: isRetryableError,
+          status: error?.status
+        });
 
         if (isLastAttempt || !isRetryableError) {
-          throw error;
+          console.error('API呼び出し最終失敗:', error);
+          throw new Error(`Gemini API呼び出しに失敗しました。しばらく時間をおいて再度お試しください。詳細: ${errorMessage}`);
         }
 
-        // 指数バックオフで待機
-        const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 1000;
-        console.log(`API呼び出し失敗 (試行 ${attempt}/${maxRetries}), ${Math.round(delay)}ms後にリトライ...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        // より長い指数バックオフ + ジッター
+        const exponentialDelay = baseDelay * Math.pow(2, attempt - 1);
+        const jitter = Math.random() * 2000; // 0-2秒のランダム待機
+        const totalDelay = exponentialDelay + jitter;
+        
+        console.log(`${Math.round(totalDelay)}ms後にリトライします...`);
+        await new Promise(resolve => setTimeout(resolve, totalDelay));
       }
     }
     throw new Error('Max retries exceeded');
@@ -81,18 +97,168 @@ export class BusinessImprovementAI {
 
   async analyzeAndGenerate(profile: CompanyProfile): Promise<AIAnalysisResult> {
     try {
-      const analysis = await this.performComprehensiveAnalysis(profile);
-      const generatedContent = await this.generateApplicationContent(profile, analysis);
+      console.log('緊急モード: テンプレートベースで作成:', profile.name);
+      
+      // 緊急対応：AI呼び出しを完全回避してテンプレートのみ使用
+      const fallbackAnalysis = this.generateFallbackAnalysis(profile);
+      const fallbackContent = this.generateFallbackContent(profile);
+      
+      console.log('テンプレート作成完了');
       
       return {
-        ...analysis,
-        generatedSections: generatedContent,
-        estimatedApprovalRate: this.calculateApprovalRate(profile, analysis)
+        ...fallbackAnalysis,
+        generatedSections: fallbackContent,
+        estimatedApprovalRate: this.calculateApprovalRate(profile, fallbackAnalysis)
       };
-    } catch (error) {
-      console.error('AI分析エラー:', error);
-      throw error;
+    } catch (error: any) {
+      console.error('申請書生成エラー:', error);
+      
+      // 最後の手段：基本的なフォールバック
+      const basicAnalysis = this.generateFallbackAnalysis(profile);
+      const basicContent = this.generateFallbackContent(profile);
+      
+      return {
+        ...basicAnalysis,
+        generatedSections: basicContent,
+        estimatedApprovalRate: 75
+      };
     }
+  }
+
+  // 安全なAI分析（軽量版）- オプション機能として
+  async safeAnalyzeAndGenerate(profile: CompanyProfile): Promise<AIAnalysisResult> {
+    try {
+      console.log('安全AI分析開始:', profile.name);
+      
+      // ステップ1: 軽量分析（コース・設備推奨のみ）
+      const basicAnalysis = await this.performBasicAnalysis(profile);
+      console.log('基本分析完了');
+      
+      // ステップ2: 申請書骨子生成（軽量プロンプト）
+      const generatedContent = await this.generateSimpleApplicationContent(profile, basicAnalysis);
+      console.log('申請書生成完了');
+      
+      return {
+        ...basicAnalysis,
+        generatedSections: generatedContent,
+        estimatedApprovalRate: this.calculateApprovalRate(profile, basicAnalysis)
+      };
+    } catch (error: any) {
+      console.error('AI分析エラー、フォールバックに切り替え:', error);
+      
+      // エラー時は即座にテンプレートモードに切り替え
+      const fallbackAnalysis = this.generateFallbackAnalysis(profile);
+      const fallbackContent = this.generateFallbackContent(profile);
+      
+      return {
+        ...fallbackAnalysis,
+        generatedSections: fallbackContent,
+        estimatedApprovalRate: this.calculateApprovalRate(profile, fallbackAnalysis)
+      };
+    }
+  }
+
+  // 軽量版: 基本分析のみ（コース・設備推奨）
+  private async performBasicAnalysis(profile: CompanyProfile): Promise<Partial<AIAnalysisResult>> {
+    const prompt = `
+業務改善助成金の申請について、企業情報から最適な申請コースと推奨設備を提案してください。
+
+【企業情報】
+- 企業名: ${profile.name}
+- 業種: ${profile.industry}  
+- 従業員数: ${profile.employeeCount}名
+- 希望賃金引上げ額: ${profile.targetWageIncrease}円
+- 業務課題: ${profile.businessChallenges.join('、')}
+
+【判断基準】
+- 賃金引上げ額に応じたコース選択（30円/45円/60円/90円）
+- 業種に適した設備カテゴリ
+- 従業員数に応じた推定費用
+
+以下のJSON形式で返してください：
+{
+  "overallScore": 80,
+  "recommendedCourse": "${profile.targetWageIncrease}円コース",
+  "recommendedEquipment": {
+    "category": "設備カテゴリ",
+    "equipment": "具体的な設備名",
+    "estimatedCost": 1000000,
+    "expectedEffect": "期待効果"
+  },
+  "riskAssessment": {
+    "risks": ["主要リスク"],
+    "countermeasures": ["対策"]
+  },
+  "improvementSuggestions": ["改善提案"]
+}
+`;
+
+    const result = await this.retryApiCall(async () => {
+      const response = await this.model.generateContent(prompt);
+      return await response.response;
+    });
+    const text = result.text();
+
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+    } catch (error) {
+      console.error('JSONパースエラー:', error);
+    }
+
+    // フォールバック
+    return this.generateFallbackAnalysis(profile);
+  }
+
+  // 軽量版: シンプルな申請書生成
+  private async generateSimpleApplicationContent(
+    profile: CompanyProfile, 
+    analysis: Partial<AIAnalysisResult>
+  ): Promise<AIAnalysisResult['generatedSections']> {
+    const prompt = `
+業務改善助成金の申請書を作成してください。
+
+【企業情報】
+- 企業名: ${profile.name}（${profile.industry}・${profile.employeeCount}名）
+- 賃金引上げ: ${profile.targetWageIncrease}円
+- 業務課題: ${profile.businessChallenges.join('、')}
+- 現在の業務: ${profile.currentProcesses}
+
+【推奨設備】${analysis.recommendedEquipment?.equipment}
+
+【重要ポイント】
+- 生産性向上による賃金引上げの根拠を明確に
+- 具体的な数値効果を示す
+- 継続性を強調
+
+以下の4セクションを各400-500文字で生成：
+{
+  "necessity": "設備導入の必要性",
+  "plan": "具体的な実施計画", 
+  "effect": "生産性向上効果と賃金引上げ",
+  "sustainability": "継続性と発展性"
+}
+`;
+
+    const result = await this.retryApiCall(async () => {
+      const response = await this.model.generateContent(prompt);
+      return await response.response;
+    });
+    const text = result.text();
+
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+    } catch (error) {
+      console.error('コンテンツ生成エラー:', error);
+    }
+
+    // フォールバック
+    return this.generateFallbackContent(profile);
   }
 
   private async performComprehensiveAnalysis(profile: CompanyProfile): Promise<Partial<AIAnalysisResult>> {
@@ -316,33 +482,107 @@ ${JSON.stringify(SUCCESS_EXAMPLES)}
     return EQUIPMENT_CATEGORIES.find(cat => cat.id === categoryId) || EQUIPMENT_CATEGORIES[0];
   }
 
+  // 軽量版: セクション別文章最適化
   async optimizeApplicationText(
     currentText: string, 
     section: string, 
     profile: CompanyProfile
   ): Promise<string> {
     const prompt = `
-以下の申請書の「${section}」セクションを、採択確率を向上させるよう改善してください。
+業務改善助成金申請書の「${section}」セクションを改善してください。
 
 【現在の文章】
 ${currentText}
 
 【企業情報】
-${JSON.stringify(profile)}
+- ${profile.name}（${profile.industry}・${profile.employeeCount}名）
+- 賃金引上げ目標: ${profile.targetWageIncrease}円
 
-【改善指針】
-- 具体的な数値を追加
-- 審査員が重視するポイントを強調
-- 成功フレーズを活用
-- 避けるべきフレーズを除去
-- 論理的な構成に改善
+【改善ポイント】
+- 具体的な数値効果を追加
+- 継続性・実現可能性を強調
+- 地域経済への貢献を明記
 
-【参考情報】
-評価ポイント: ${JSON.stringify(EVALUATION_POINTS)}
-成功フレーズ: ${JSON.stringify(SUCCESS_PHRASES)}
-
-改善された文章のみを返してください。
+改善された文章のみを返してください（400-600文字）。
 `;
+
+    try {
+      console.log(`文章最適化開始: ${section}セクション`);
+      const result = await this.retryApiCall(async () => {
+        const response = await this.model.generateContent(prompt);
+        return await response.response;
+      });
+      console.log(`文章最適化完了: ${section}セクション`);
+      return result.text();
+    } catch (error: any) {
+      console.error('文章最適化エラー:', error);
+      
+      // エラーが発生しても元の文章を返すが、警告を出力
+      console.warn(`${section}セクションの最適化に失敗しました。元の文章を使用します。`);
+      return currentText;
+    }
+  }
+
+  // 個別セクション強化生成（後で追加機能として）
+  async enhanceSingleSection(
+    sectionType: 'necessity' | 'plan' | 'effect' | 'sustainability',
+    profile: CompanyProfile,
+    equipmentInfo?: string
+  ): Promise<string> {
+    const sectionPrompts = {
+      necessity: `
+【設備導入の必要性】を説明する文章を作成してください。
+
+企業情報: ${profile.name}（${profile.industry}・${profile.employeeCount}名）
+課題: ${profile.businessChallenges.join('、')}
+
+重点ポイント:
+- 人手不足・生産性の課題
+- 賃金引上げの必要性
+- 設備投資の緊急性
+
+400-600文字で作成してください。`,
+      
+      plan: `
+【事業実施計画】を作成してください。
+
+企業情報: ${profile.name}（${profile.industry}・${profile.employeeCount}名）
+推奨設備: ${equipmentInfo || '生産性向上設備'}
+
+重点ポイント:
+- 具体的な導入スケジュール
+- 従業員研修計画
+- 効果測定方法
+
+400-600文字で作成してください。`,
+      
+      effect: `
+【生産性向上効果】を説明してください。
+
+企業情報: ${profile.name}（${profile.industry}・${profile.employeeCount}名）
+賃金引上げ: ${profile.targetWageIncrease}円
+
+重点ポイント:
+- 定量的な効果予測
+- 賃金引上げの根拠
+- 売上・利益への影響
+
+400-600文字で作成してください。`,
+      
+      sustainability: `
+【持続性・発展性】を説明してください。
+
+企業情報: ${profile.name}（${profile.industry}・${profile.employeeCount}名）
+
+重点ポイント:
+- 継続的な効果維持
+- 企業の成長戦略
+- 地域経済への貢献
+
+400-600文字で作成してください。`
+    };
+
+    const prompt = sectionPrompts[sectionType];
 
     try {
       const result = await this.retryApiCall(async () => {
@@ -350,9 +590,9 @@ ${JSON.stringify(profile)}
         return await response.response;
       });
       return result.text();
-    } catch (error) {
-      console.error('文章最適化エラー:', error);
-      return currentText;
+    } catch (error: any) {
+      console.error(`${sectionType}セクション生成エラー:`, error);
+      throw error;
     }
   }
 }

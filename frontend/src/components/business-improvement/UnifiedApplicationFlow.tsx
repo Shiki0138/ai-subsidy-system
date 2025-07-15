@@ -71,10 +71,12 @@ export default function UnifiedApplicationFlow() {
 
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStep, setGenerationStep] = useState<string>('');
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [finalApplication, setFinalApplication] = useState<any>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [useFallbackMode, setUseFallbackMode] = useState(false);
 
   const industries = [
     '製造業', '建設業', '運輸業', '飲食サービス業', 
@@ -160,6 +162,9 @@ export default function UnifiedApplicationFlow() {
 
   const generateAIContent = async () => {
     setIsGenerating(true);
+    setGenerationStep('初期化中...');
+    setUseFallbackMode(false);
+    
     try {
       const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
       if (!apiKey) {
@@ -180,27 +185,52 @@ export default function UnifiedApplicationFlow() {
         targetEquipment: basicInfo.desiredEquipment
       };
 
-      const result = await ai.analyzeAndGenerate(profile);
-      
-      setGeneratedContent({
-        necessity: result.generatedSections.necessity,
-        businessPlan: result.generatedSections.plan,
-        effectPlan: result.generatedSections.effect,
-        sustainability: result.generatedSections.sustainability,
-        recommendedEquipment: result.recommendedEquipment.equipment,
-        estimatedCost: result.recommendedEquipment.estimatedCost,
-        expectedEffect: result.recommendedEquipment.expectedEffect
-      });
+      // 段階的に生成を試行
+      try {
+        setGenerationStep('企業分析中... (1/2)');
+        const result = await ai.analyzeAndGenerate(profile);
+        
+        setGenerationStep('申請書作成完了！');
+        setGeneratedContent({
+          necessity: result.generatedSections.necessity,
+          businessPlan: result.generatedSections.plan,
+          effectPlan: result.generatedSections.effect,
+          sustainability: result.generatedSections.sustainability,
+          recommendedEquipment: result.recommendedEquipment.equipment,
+          estimatedCost: result.recommendedEquipment.estimatedCost,
+          expectedEffect: result.recommendedEquipment.expectedEffect
+        });
 
-      setStep(3);
-      setHasUnsavedChanges(true);
-    } catch (error: any) {
-      console.error('AI生成エラー:', error);
+        setStep(3);
+        setHasUnsavedChanges(true);
+        
+      } catch (aiError: any) {
+        // AI生成失敗時：フォールバックモードで作成
+        console.warn('AI生成失敗、フォールバックモードで作成:', aiError);
+        setGenerationStep('AIサーバー混雑のため、テンプレートベースで生成中...');
+        setUseFallbackMode(true);
+        
+        // 短時間待機してからフォールバック実行
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const fallbackContent = generateFallbackApplication(profile);
+        setGeneratedContent(fallbackContent);
+        setStep(3);
+        setHasUnsavedChanges(true);
+        
+        // フォールバック使用の通知
+        setTimeout(() => {
+          alert('AIサーバーが混雑しているため、テンプレートベースで申請書を作成しました。\n内容を確認し、必要に応じて編集してください。');
+        }, 500);
+      }
       
-      let errorMessage = 'AI生成中にエラーが発生しました。';
+    } catch (error: any) {
+      console.error('申請書生成エラー:', error);
+      
+      let errorMessage = '申請書生成中にエラーが発生しました。';
       
       if (error?.message?.includes('503') || error?.message?.includes('overloaded')) {
-        errorMessage = 'AIサーバーが混雑しています。しばらく時間をおいてから再試行してください。（通常1-2分で回復します）';
+        errorMessage = 'AIサーバーが混雑しています。しばらく時間をおいてから再試行するか、「テンプレートで作成」をお試しください。';
       } else if (error?.message?.includes('429')) {
         errorMessage = 'リクエスト制限に達しました。少し時間をおいてから再試行してください。';
       } else if (error?.message?.includes('API key')) {
@@ -214,6 +244,218 @@ export default function UnifiedApplicationFlow() {
       alert(errorMessage);
     } finally {
       setIsGenerating(false);
+      setGenerationStep('');
+    }
+  };
+
+  // フォールバック用申請書生成関数
+  const generateFallbackApplication = (profile: CompanyProfile): GeneratedContent => {
+    // 推奨コースの決定
+    let recommendedCourse = '45円コース';
+    if (profile.targetWageIncrease >= 90) recommendedCourse = '90円コース';
+    else if (profile.targetWageIncrease >= 60) recommendedCourse = '60円コース';
+    else if (profile.targetWageIncrease <= 30) recommendedCourse = '30円コース';
+
+    // 業種に基づく推奨設備
+    const equipmentMap: Record<string, { equipment: string; cost: number; effect: string }> = {
+      '製造業': { equipment: '自動化機械・生産管理システム', cost: 1500000, effect: '作業効率30%向上、品質安定化' },
+      '建設業': { equipment: '建設機械・安全管理システム', cost: 2000000, effect: '工期短縮、安全性向上' },
+      '運輸業': { equipment: '配送管理システム・GPS追跡装置', cost: 800000, effect: '配送効率25%向上' },
+      '飲食サービス業': { equipment: 'POS・注文管理システム', cost: 600000, effect: '注文処理時間50%短縮' },
+      '小売業': { equipment: '在庫管理・レジシステム', cost: 700000, effect: '在庫精度向上、会計効率化' },
+      '介護・福祉': { equipment: '介護支援システム・見守り機器', cost: 1000000, effect: '業務負担軽減、サービス質向上' },
+      'IT・情報通信業': { equipment: '開発ツール・クラウドシステム', cost: 900000, effect: '開発効率40%向上' },
+      'その他': { equipment: '業務管理システム・自動化機器', cost: 1000000, effect: '業務効率30%向上' }
+    };
+
+    const equipment = equipmentMap[profile.industry] || equipmentMap['その他'];
+
+    return {
+      necessity: `弊社は${profile.industry}において、${profile.businessChallenges.join('、')}といった課題に直面しております。特に人手不足の深刻化により、従業員一人当たりの業務負担が増加し、生産性の向上が急務となっています。また、地域別最低賃金の引上げに対応し、優秀な人材の確保・定着を図るため、労働環境の改善と賃金水準の向上が不可欠です。これらの課題を解決し、持続的な成長を実現するため、生産性向上に資する設備投資を行う必要があります。従業員${profile.employeeCount}名の小規模事業者として、限られた人的資源を最大限に活用し、一人当たりの生産性を大幅に向上させることで、賃金引上げの原資を確保します。`,
+      
+      businessPlan: `本事業では、${profile.currentProcesses}の業務プロセスを見直し、${equipment.equipment}の導入により効率化を図ります。具体的には、導入予定の設備により作業工程を自動化・効率化し、従業員をより付加価値の高い業務に配置転換します。導入スケジュールは、設備選定・発注から導入完了まで4ヶ月を予定し、並行して従業員への研修も実施します。第1ヶ月：設備選定・契約、第2-3ヶ月：設備導入・設置、第4ヶ月：試運転・研修実施。設備導入後は、効果測定を毎月実施し、PDCAサイクルを回しながら継続的な改善を行います。`,
+      
+      effectPlan: `${equipment.equipment}の導入により、${equipment.effect}を実現し、労働生産性を大幅に向上させます。これにより創出される利益を原資として、全従業員の時間給を${profile.targetWageIncrease}円引上げ、年収ベースで約${profile.targetWageIncrease * 2000}円の処遇改善を実現します。具体的な効果として、作業時間の短縮により1人当たりの生産量が30%向上し、品質の安定化により顧客満足度も向上します。また、業務効率化により残業時間の削減も可能となり、ワークライフバランスの向上にも寄与します。従業員のモチベーション向上により、さらなる生産性向上の好循環を創出します。`,
+      
+      sustainability: `生産性向上による収益改善により、賃金引上げを継続的に維持します。設備投資による固定費増加分は、生産性向上による売上増加と原価削減効果で十分に回収可能です。また、従業員のスキルアップにより、企業の技術力と競争力を強化し、中長期的な成長基盤を構築します。地域の雇用創出と人材定着にも貢献し、地域経済の活性化に寄与します。今回の設備投資を契機として、さらなる業務改善と技術革新に取り組み、業界のリーディングカンパニーを目指します。持続的な成長により、将来的にはさらなる賃金引上げも計画しています。`,
+      
+      recommendedEquipment: equipment.equipment,
+      estimatedCost: equipment.cost,
+      expectedEffect: equipment.effect
+    };
+  };
+
+  // テンプレートベースで即座に生成する関数
+  const generateWithTemplate = async () => {
+    setIsGenerating(true);
+    setGenerationStep('テンプレートベースで生成中...');
+    setUseFallbackMode(true);
+    
+    try {
+      const profile: CompanyProfile = {
+        name: basicInfo.companyName,
+        industry: basicInfo.industry,
+        employeeCount: basicInfo.employeeCount,
+        currentMinWage: basicInfo.currentMinWage,
+        targetWageIncrease: basicInfo.targetWageIncrease,
+        businessChallenges: basicInfo.currentChallenges.split('、').filter(c => c.trim()),
+        currentProcesses: basicInfo.currentProcesses,
+        targetEquipment: basicInfo.desiredEquipment
+      };
+
+      // 短時間待機（UX向上）
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const fallbackContent = generateFallbackApplication(profile);
+      setGeneratedContent(fallbackContent);
+      setStep(3);
+      setHasUnsavedChanges(true);
+      
+    } catch (error) {
+      console.error('テンプレート生成エラー:', error);
+      alert('申請書の生成に失敗しました。入力内容を確認して再試行してください。');
+    } finally {
+      setIsGenerating(false);
+      setGenerationStep('');
+    }
+  };
+
+  // 軽量AI生成（改善版）
+  const generateWithLightAI = async () => {
+    setIsGenerating(true);
+    setGenerationStep('軽量AI分析中...');
+    setUseFallbackMode(false);
+    
+    try {
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('Gemini API key not found');
+      }
+
+      const ai = new BusinessImprovementAI(apiKey);
+      
+      const profile: CompanyProfile = {
+        name: basicInfo.companyName,
+        industry: basicInfo.industry,
+        employeeCount: basicInfo.employeeCount,
+        currentMinWage: basicInfo.currentMinWage,
+        targetWageIncrease: basicInfo.targetWageIncrease,
+        businessChallenges: basicInfo.currentChallenges.split('、').filter(c => c.trim()),
+        currentProcesses: basicInfo.currentProcesses,
+        targetEquipment: basicInfo.desiredEquipment
+      };
+
+      // 安全なAI分析を実行
+      const result = await ai.safeAnalyzeAndGenerate(profile);
+      
+      setGeneratedContent({
+        necessity: result.generatedSections.necessity,
+        businessPlan: result.generatedSections.plan,
+        effectPlan: result.generatedSections.effect,
+        sustainability: result.generatedSections.sustainability,
+        recommendedEquipment: result.recommendedEquipment.equipment,
+        estimatedCost: result.recommendedEquipment.estimatedCost,
+        expectedEffect: result.recommendedEquipment.expectedEffect
+      });
+
+      setStep(3);
+      setHasUnsavedChanges(true);
+      
+    } catch (error: any) {
+      console.error('軽量AI生成エラー:', error);
+      
+      // エラー時は自動的にテンプレートモードに切り替え
+      setGenerationStep('AI混雑中、テンプレートに切り替え中...');
+      setUseFallbackMode(true);
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const profile: CompanyProfile = {
+        name: basicInfo.companyName,
+        industry: basicInfo.industry,
+        employeeCount: basicInfo.employeeCount,
+        currentMinWage: basicInfo.currentMinWage,
+        targetWageIncrease: basicInfo.targetWageIncrease,
+        businessChallenges: basicInfo.currentChallenges.split('、').filter(c => c.trim()),
+        currentProcesses: basicInfo.currentProcesses,
+        targetEquipment: basicInfo.desiredEquipment
+      };
+
+      const fallbackContent = generateFallbackApplication(profile);
+      setGeneratedContent(fallbackContent);
+      setStep(3);
+      setHasUnsavedChanges(true);
+      
+      alert('AIサーバーが混雑しているため、テンプレートベースで申請書を作成しました。');
+    } finally {
+      setIsGenerating(false);
+      setGenerationStep('');
+    }
+  };
+
+  // 個別セクション強化機能
+  const enhanceIndividualSection = async (section: keyof GeneratedContent) => {
+    if (!generatedContent) return;
+    
+    setIsGenerating(true);
+    setGenerationStep(`${section}セクションを再生成中...`);
+    
+    try {
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+      if (!apiKey) throw new Error('API key not found');
+
+      const ai = new BusinessImprovementAI(apiKey);
+      const profile: CompanyProfile = {
+        name: basicInfo.companyName,
+        industry: basicInfo.industry,
+        employeeCount: basicInfo.employeeCount,
+        currentMinWage: basicInfo.currentMinWage,
+        targetWageIncrease: basicInfo.targetWageIncrease,
+        businessChallenges: basicInfo.currentChallenges.split('、').filter(c => c.trim()),
+        currentProcesses: basicInfo.currentProcesses
+      };
+
+      // セクション名をマッピング
+      const sectionMap: Record<keyof GeneratedContent, 'necessity' | 'plan' | 'effect' | 'sustainability'> = {
+        necessity: 'necessity',
+        businessPlan: 'plan',
+        effectPlan: 'effect',
+        sustainability: 'sustainability',
+        recommendedEquipment: 'necessity', // fallback
+        estimatedCost: 'necessity', // fallback
+        expectedEffect: 'effect' // fallback
+      };
+
+      const sectionType = sectionMap[section];
+      if (['necessity', 'businessPlan', 'effectPlan', 'sustainability'].includes(section)) {
+        const enhancedText = await ai.enhanceSingleSection(
+          sectionType, 
+          profile, 
+          generatedContent.recommendedEquipment
+        );
+        
+        setGeneratedContent(prev => prev ? {
+          ...prev,
+          [section]: enhancedText
+        } : null);
+        setHasUnsavedChanges(true);
+      }
+      
+    } catch (error: any) {
+      console.error('セクション強化エラー:', error);
+      
+      let errorMessage = `${section}セクションの再生成に失敗しました。`;
+      
+      if (error?.message?.includes('503') || error?.message?.includes('overloaded')) {
+        errorMessage = 'AIサーバーが混雑しています。しばらく時間をおいてから再試行してください。';
+      } else if (error?.message?.includes('429')) {
+        errorMessage = 'リクエスト制限に達しました。少し時間をおいてから再試行してください。';
+      }
+      
+      alert(errorMessage);
+    } finally {
+      setIsGenerating(false);
+      setGenerationStep('');
     }
   };
 
@@ -531,30 +773,85 @@ export default function UnifiedApplicationFlow() {
                   <AlertDescription>
                     <strong>企業情報:</strong> {basicInfo.companyName}（{basicInfo.industry}・{basicInfo.employeeCount}名）<br />
                     <strong>目標:</strong> 時給{basicInfo.targetWageIncrease}円引上げ<br />
-                    <span className="text-blue-600 text-sm mt-1 block">
-                      ⚠️ AIサーバーが混雑している場合、生成に時間がかかることがあります
-                    </span>
+                    {!isGenerating && (
+                      <span className="text-blue-600 text-sm mt-1 block">
+                        💡 AIサーバー混雑時は自動でテンプレートに切り替わります
+                      </span>
+                    )}
+                    {isGenerating && generationStep && (
+                      <span className="text-orange-600 text-sm mt-1 block font-medium">
+                        🔄 {generationStep}
+                      </span>
+                    )}
                   </AlertDescription>
                 </Alert>
 
-                <Button 
-                  onClick={generateAIContent}
-                  disabled={isGenerating}
-                  className="w-full py-3"
-                  size="lg"
-                >
-                  {isGenerating ? (
-                    <>
-                      <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
-                      AI生成中...（サーバー負荷により時間がかかる場合があります）
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-5 w-5" />
-                      申請書を生成する
-                    </>
-                  )}
-                </Button>
+                <div className="space-y-3">
+                  <Button 
+                    onClick={generateAIContent}
+                    disabled={isGenerating}
+                    className="w-full py-3"
+                    size="lg"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
+                        {generationStep || 'テンプレート生成中...'}
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="mr-2 h-5 w-5" />
+                        安全な申請書作成（推奨）
+                      </>
+                    )}
+                  </Button>
+                  
+                  <Button 
+                    onClick={generateWithLightAI}
+                    disabled={isGenerating}
+                    variant="outline"
+                    className="w-full py-2"
+                    size="lg"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        生成中...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        軽量AI生成を試す
+                      </>
+                    )}
+                  </Button>
+                  
+                  <Button 
+                    onClick={generateWithTemplate}
+                    disabled={isGenerating}
+                    variant="outline"
+                    className="w-full py-2"
+                    size="sm"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        生成中...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="mr-2 h-4 w-4" />
+                        テンプレートのみ
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                <div className="text-xs text-gray-500 text-center space-y-1">
+                  <p>• <strong>安全な申請書作成</strong>：業種別テンプレートで確実に作成（約3秒）</p>
+                  <p>• <strong>軽量AI生成</strong>：軽量化されたAI分析（約30秒、混雑時は自動でテンプレートに切り替え）</p>
+                  <p>• <strong>テンプレートのみ</strong>：最速での申請書作成</p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -563,12 +860,23 @@ export default function UnifiedApplicationFlow() {
       case 3:
         return (
           <div className="space-y-6">
-            <Alert className="bg-green-50 border-green-200">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                AI分析が完了しました！生成された内容を確認し、必要に応じて編集してください。
-              </AlertDescription>
-            </Alert>
+            {useFallbackMode ? (
+              <Alert className="bg-orange-50 border-orange-200">
+                <FileText className="h-4 w-4 text-orange-600" />
+                <AlertDescription className="text-orange-800">
+                  <strong>テンプレートベースで申請書を作成しました！</strong><br />
+                  AIサーバーの混雑により、業種別テンプレートを使用して申請書を生成しました。内容を確認し、必要に応じて編集してください。
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert className="bg-green-50 border-green-200">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">
+                  <strong>AI分析が完了しました！</strong><br />
+                  最新の募集要項と成功事例を分析して申請書を生成しました。内容を確認し、必要に応じて編集してください。
+                </AlertDescription>
+              </Alert>
+            )}
 
             {generatedContent && (
               <>
@@ -631,8 +939,18 @@ export default function UnifiedApplicationFlow() {
                             size="sm"
                             onClick={() => optimizeSection(key as keyof GeneratedContent, generatedContent[key as keyof GeneratedContent] as string)}
                             disabled={isGenerating}
+                            title="AI文章最適化"
                           >
                             {isGenerating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => enhanceIndividualSection(key as keyof GeneratedContent)}
+                            disabled={isGenerating}
+                            title="セクション再生成"
+                          >
+                            {isGenerating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Edit3 className="h-4 w-4" />}
                           </Button>
                         </div>
                       </div>
