@@ -129,6 +129,14 @@ export class SafePDFGenerator {
         };
       }
 
+      // データの検証
+      if (!data || !data.basicInfo) {
+        return {
+          success: false,
+          error: 'Invalid application data provided'
+        };
+      }
+
       await this.initializeReactPDFRenderer();
       
       // React-PDFコンポーネントの動的インポート
@@ -145,9 +153,24 @@ export class SafePDFGenerator {
       };
     } catch (error) {
       console.error('React-PDF generation error:', error);
+      
+      let errorMessage = 'Unknown error';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        // 特定のエラーパターンに対する対応
+        if (errorMessage.includes('Invalid border style')) {
+          errorMessage = 'PDF style configuration error. Please contact support.';
+        } else if (errorMessage.includes('fontkit')) {
+          errorMessage = 'Font processing error. Please refresh the page.';
+        } else if (errorMessage.includes('Cannot read properties')) {
+          errorMessage = 'Data structure error. Please check the form data.';
+        }
+      }
+      
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: errorMessage
       };
     }
   }

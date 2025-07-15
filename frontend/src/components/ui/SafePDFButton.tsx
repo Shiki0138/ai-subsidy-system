@@ -38,6 +38,11 @@ export const SafePDFButton: React.FC<SafePDFButtonProps> = ({
     setError(null);
 
     try {
+      // データの検証
+      if (!data || !data.basicInfo) {
+        throw new Error('申請データが不完全です。基本情報を確認してください。');
+      }
+
       let result;
       
       if (templateBuffer) {
@@ -51,11 +56,35 @@ export const SafePDFButton: React.FC<SafePDFButtonProps> = ({
       if (result.success) {
         downloadPDF(result, fileName);
       } else {
-        setError(result.error || 'PDF生成に失敗しました');
+        // 詳細なエラー情報を提供
+        let errorMessage = result.error || 'PDF生成に失敗しました';
+        
+        if (errorMessage.includes('Invalid border style')) {
+          errorMessage = 'PDF生成エラー: スタイル設定に問題があります。システム管理者に報告してください。';
+        } else if (errorMessage.includes('fontkit')) {
+          errorMessage = 'PDF生成エラー: フォント処理に問題があります。ページを再読み込みしてください。';
+        } else if (errorMessage.includes('canvas')) {
+          errorMessage = 'PDF生成エラー: ブラウザの機能に問題があります。別のブラウザで試してください。';
+        }
+        
+        setError(errorMessage);
       }
     } catch (error) {
       console.error('PDF generation error:', error);
-      setError(error instanceof Error ? error.message : 'PDF生成中にエラーが発生しました');
+      
+      let errorMessage = 'PDF生成中にエラーが発生しました';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Invalid border style')) {
+          errorMessage = 'PDF生成エラー: スタイル設定に問題があります。システム管理者に報告してください。';
+        } else if (error.message.includes('window')) {
+          errorMessage = 'PDF生成エラー: ブラウザ環境でのみ動作します。';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsGenerating(false);
     }
