@@ -23,7 +23,9 @@ import {
   Trash2
 } from 'lucide-react';
 import { BusinessImprovementAI, CompanyProfile } from '@/services/business-improvement-ai';
-import { generateBusinessImprovementPDF, generateBusinessImprovementWord } from '@/utils/business-improvement-pdf';
+import { generateBusinessImprovementWord } from '@/utils/business-improvement-pdf';
+import { ImprovedBusinessImprovementPDFDownloadButton } from '@/utils/business-improvement-pdf-react-improved';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 interface BasicInfo {
   companyName: string;
@@ -885,9 +887,11 @@ export default function UnifiedApplicationFlow() {
                   <CardHeader>
                     <CardTitle className="flex justify-between items-center">
                       推奨設備・投資計画
-                      <Button variant="outline" size="sm" onClick={() => copyToClipboard(generatedContent.recommendedEquipment)}>
-                        <Copy className="h-4 w-4" />
-                      </Button>
+                      <Tooltip content="クリップボードにコピー" placement="top">
+                        <Button variant="outline" size="sm" onClick={() => copyToClipboard(generatedContent.recommendedEquipment)}>
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </Tooltip>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -920,38 +924,44 @@ export default function UnifiedApplicationFlow() {
                       <div className="flex justify-between items-center">
                         <CardTitle>{title}</CardTitle>
                         <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => copyToClipboard(generatedContent[key as keyof GeneratedContent] as string)}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setEditingSection(editingSection === key ? null : key)}
-                          >
-                            <Edit3 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => optimizeSection(key as keyof GeneratedContent, generatedContent[key as keyof GeneratedContent] as string)}
-                            disabled={isGenerating}
-                            title="AI文章最適化"
-                          >
-                            {isGenerating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => enhanceIndividualSection(key as keyof GeneratedContent)}
-                            disabled={isGenerating}
-                            title="セクション再生成"
-                          >
-                            {isGenerating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Edit3 className="h-4 w-4" />}
-                          </Button>
+                          <Tooltip content="クリップボードにコピー" placement="top">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => copyToClipboard(generatedContent[key as keyof GeneratedContent] as string)}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          </Tooltip>
+                          <Tooltip content="編集モード切替" placement="top">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setEditingSection(editingSection === key ? null : key)}
+                            >
+                              <Edit3 className="h-4 w-4" />
+                            </Button>
+                          </Tooltip>
+                          <Tooltip content="AI文章最適化" placement="top">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => optimizeSection(key as keyof GeneratedContent, generatedContent[key as keyof GeneratedContent] as string)}
+                              disabled={isGenerating}
+                            >
+                              {isGenerating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                            </Button>
+                          </Tooltip>
+                          <Tooltip content="セクション再生成" placement="top">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => enhanceIndividualSection(key as keyof GeneratedContent)}
+                              disabled={isGenerating}
+                            >
+                              {isGenerating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Edit3 className="h-4 w-4" />}
+                            </Button>
+                          </Tooltip>
                         </div>
                       </div>
                     </CardHeader>
@@ -1062,14 +1072,16 @@ export default function UnifiedApplicationFlow() {
                 </div>
 
                 <div className="flex gap-4 justify-center">
-                  <Button onClick={() => generateBusinessImprovementPDF(finalApplication)} size="lg">
-                    <Download className="h-4 w-4 mr-2" />
-                    PDF形式でダウンロード
-                  </Button>
-                  <Button variant="outline" onClick={() => generateBusinessImprovementWord(finalApplication)}>
-                    <Download className="h-4 w-4 mr-2" />
-                    テキスト形式
-                  </Button>
+                  <ImprovedBusinessImprovementPDFDownloadButton 
+                    data={finalApplication} 
+                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-8"
+                  />
+                  <Tooltip content="Word形式でダウンロード" placement="top">
+                    <Button variant="outline" onClick={() => generateBusinessImprovementWord(finalApplication)}>
+                      <Download className="h-4 w-4 mr-2" />
+                      テキスト形式
+                    </Button>
+                  </Tooltip>
                 </div>
               </>
             )}
@@ -1095,14 +1107,18 @@ export default function UnifiedApplicationFlow() {
           {/* 一時保存状況表示 */}
           <div className="text-right">
             <div className="flex items-center gap-2 mb-2">
-              <Button variant="outline" size="sm" onClick={saveDraft}>
-                <Save className="h-4 w-4 mr-1" />
-                手動保存
-              </Button>
-              <Button variant="outline" size="sm" onClick={clearDraft}>
-                <Trash2 className="h-4 w-4 mr-1" />
-                下書き削除
-              </Button>
+              <Tooltip content="現在の内容を保存" placement="top">
+                <Button variant="outline" size="sm" onClick={saveDraft}>
+                  <Save className="h-4 w-4 mr-1" />
+                  手動保存
+                </Button>
+              </Tooltip>
+              <Tooltip content="保存された下書きを削除" placement="top">
+                <Button variant="outline" size="sm" onClick={clearDraft}>
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  下書き削除
+                </Button>
+              </Tooltip>
             </div>
             <div className="text-sm text-gray-500 flex items-center gap-1">
               <Clock className="h-3 w-3" />

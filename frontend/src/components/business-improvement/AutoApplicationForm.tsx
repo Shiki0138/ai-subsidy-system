@@ -21,7 +21,9 @@ import {
 } from 'lucide-react';
 import { BusinessImprovementAI, CompanyProfile, AIAnalysisResult } from '@/services/business-improvement-ai';
 import { EQUIPMENT_CATEGORIES, SUBSIDY_RATES } from '@/data/business-improvement-guideline';
-import { generateBusinessImprovementPDF, generateBusinessImprovementWord } from '@/utils/business-improvement-pdf';
+import { generateBusinessImprovementWord } from '@/utils/business-improvement-pdf';
+import { ImprovedBusinessImprovementPDFDownloadButton } from '@/utils/business-improvement-pdf-react-improved';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 interface FormData extends CompanyProfile {
   contactPerson: string;
@@ -184,11 +186,6 @@ export default function AutoApplicationForm() {
     } finally {
       setIsOptimizing(prev => ({ ...prev, [section]: false }));
     }
-  };
-
-  const downloadApplicationPDF = () => {
-    if (!generatedApplication) return;
-    generateBusinessImprovementPDF(generatedApplication);
   };
 
   const downloadApplicationWord = () => {
@@ -470,19 +467,21 @@ export default function AutoApplicationForm() {
                     <CardHeader>
                       <div className="flex justify-between items-center">
                         <CardTitle className="text-lg">{title}</CardTitle>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => optimizeSection(key, generatedApplication.plan[key])}
-                          disabled={isOptimizing[key]}
-                        >
-                          {isOptimizing[key] ? (
-                            <RefreshCw className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Sparkles className="h-4 w-4" />
-                          )}
-                          {isOptimizing[key] ? '最適化中...' : 'AI最適化'}
-                        </Button>
+                        <Tooltip content="AI文章最適化" placement="top">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => optimizeSection(key, generatedApplication.plan[key])}
+                            disabled={isOptimizing[key]}
+                          >
+                            {isOptimizing[key] ? (
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-4 w-4" />
+                            )}
+                            {isOptimizing[key] ? '最適化中...' : 'AI最適化'}
+                          </Button>
+                        </Tooltip>
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -566,18 +565,24 @@ export default function AutoApplicationForm() {
                 </div>
 
                 <div className="flex gap-4 justify-center">
-                  <Button onClick={downloadApplicationPDF} className="px-8">
-                    <Download className="h-4 w-4 mr-2" />
-                    PDF形式でダウンロード
-                  </Button>
-                  <Button variant="outline" onClick={downloadApplicationWord}>
-                    <Download className="h-4 w-4 mr-2" />
-                    テキスト形式
-                  </Button>
-                  <Button variant="outline" onClick={() => setCurrentStep(4)}>
-                    <Eye className="h-4 w-4 mr-2" />
-                    内容を再確認
-                  </Button>
+                  {generatedApplication && (
+                    <ImprovedBusinessImprovementPDFDownloadButton 
+                      data={generatedApplication} 
+                      className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-8"
+                    />
+                  )}
+                  <Tooltip content="Word形式でダウンロード" placement="top">
+                    <Button variant="outline" onClick={downloadApplicationWord}>
+                      <Download className="h-4 w-4 mr-2" />
+                      テキスト形式
+                    </Button>
+                  </Tooltip>
+                  <Tooltip content="申請内容を確認" placement="top">
+                    <Button variant="outline" onClick={() => setCurrentStep(4)}>
+                      <Eye className="h-4 w-4 mr-2" />
+                      内容を再確認
+                    </Button>
+                  </Tooltip>
                 </div>
               </>
             )}
