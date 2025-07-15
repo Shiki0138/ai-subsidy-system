@@ -2,7 +2,29 @@ import React from 'react';
 import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Font, Image } from '@react-pdf/renderer';
 import { BusinessImprovementApplicationData } from './business-improvement-pdf';
 
-// 日本語フォントの登録（安定性向上）
+// フォントの事前読み込み関数
+const loadFonts = async () => {
+  try {
+    await Font.clear();
+    await Font.register({
+      family: 'NotoSansJP',
+      fonts: [
+        {
+          src: 'https://fonts.gstatic.com/s/notosansjp/v52/-F6jfjtqLzI2JPCgQBnw7HFyzSD-AsregP8VFBEi75vY0rw-oME.ttf',
+          fontWeight: 400,
+        },
+        {
+          src: 'https://fonts.gstatic.com/s/notosansjp/v52/-F6jfjtqLzI2JPCgQBnw7HFyzSD-AsregP8VFBEi75vY0rw-oME.ttf',
+          fontWeight: 700,
+        },
+      ],
+    });
+  } catch (error) {
+    console.warn('フォントの読み込みに失敗しました。デフォルトフォントを使用します。', error);
+  }
+};
+
+// 日本語フォントの登録
 Font.register({
   family: 'NotoSansJP',
   fonts: [
@@ -11,16 +33,10 @@ Font.register({
       fontWeight: 400,
     },
     {
-      src: 'https://fonts.gstatic.com/s/notosansjp/v52/-F6jfjtqLzI2JPCgQBnw7HFyzSD-AsregP8VFBEi75vY0rw-oME.ttf',
+      src: 'https://fonts.gstatic.com/s/notosansjp/v52/-F6jfjtqLzI2JPCgQBnw7HFyzSD-AsregP8VFPEi75vY0rw-oME.ttf',
       fontWeight: 700,
     },
   ],
-});
-
-// フォールバック用のフォント設定
-Font.register({
-  family: 'Helvetica',
-  src: 'https://fonts.gstatic.com/s/notosansjp/v52/-F6jfjtqLzI2JPCgQBnw7HFyzSD-AsregP8VFBEi75vY0rw-oME.ttf',
 });
 
 // スタイル定義
@@ -163,21 +179,6 @@ const styles = StyleSheet.create({
   },
 });
 
-// データ検証とフォールバック用のヘルパー関数
-const safeText = (text: string | undefined | null, fallback: string = '（未入力）'): string => {
-  if (!text || text.trim() === '') {
-    return fallback;
-  }
-  return text;
-};
-
-const safeNumber = (num: number | undefined | null, fallback: number = 0): number => {
-  if (num === undefined || num === null || isNaN(num)) {
-    return fallback;
-  }
-  return num;
-};
-
 // PDFドキュメントコンポーネント
 const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplicationData }> = ({ data }) => (
   <Document>
@@ -203,7 +204,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>事業者名</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>{safeText(data.basicInfo?.companyName)}</Text>
+              <Text style={styles.tableText}>{data.basicInfo.companyName}</Text>
             </View>
           </View>
           <View style={styles.tableRow}>
@@ -211,7 +212,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>代表者名</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>{safeText(data.basicInfo?.representative)}</Text>
+              <Text style={styles.tableText}>{data.basicInfo.representative}</Text>
             </View>
           </View>
           <View style={styles.tableRow}>
@@ -219,7 +220,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>所在地</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>{safeText(data.basicInfo?.address)}</Text>
+              <Text style={styles.tableText}>{data.basicInfo.address}</Text>
             </View>
           </View>
           <View style={styles.tableRow}>
@@ -227,7 +228,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>電話番号</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>{safeText(data.basicInfo?.phone)}</Text>
+              <Text style={styles.tableText}>{data.basicInfo.phone}</Text>
             </View>
           </View>
           <View style={styles.tableRow}>
@@ -235,7 +236,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>メールアドレス</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>{safeText(data.basicInfo?.email)}</Text>
+              <Text style={styles.tableText}>{data.basicInfo.email}</Text>
             </View>
           </View>
           <View style={styles.tableRow}>
@@ -243,7 +244,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>業種</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>{safeText(data.basicInfo?.industry)}</Text>
+              <Text style={styles.tableText}>{data.basicInfo.industry}</Text>
             </View>
           </View>
           <View style={styles.tableRowLast}>
@@ -251,7 +252,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>従業員数</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>{safeNumber(data.basicInfo?.employeeCount)}名</Text>
+              <Text style={styles.tableText}>{data.basicInfo.employeeCount}名</Text>
             </View>
           </View>
         </View>
@@ -265,7 +266,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>申請コース</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>{safeText(data.course?.name)}</Text>
+              <Text style={styles.tableText}>{data.course.name}</Text>
             </View>
           </View>
           <View style={styles.tableRow}>
@@ -273,7 +274,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>賃金引上げ額</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>{safeNumber(data.course?.wageIncrease)}円/時間</Text>
+              <Text style={styles.tableText}>{data.course.wageIncrease}円/時間</Text>
             </View>
           </View>
           <View style={styles.tableRow}>
@@ -281,7 +282,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>対象従業員数</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>{safeNumber(data.course?.targetEmployees)}名</Text>
+              <Text style={styles.tableText}>{data.course.targetEmployees}名</Text>
             </View>
           </View>
           <View style={styles.tableRowLast}>
@@ -289,7 +290,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>助成上限額</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>{safeNumber(data.course?.maxSubsidy).toLocaleString()}円</Text>
+              <Text style={styles.tableText}>{data.course.maxSubsidy.toLocaleString()}円</Text>
             </View>
           </View>
         </View>
@@ -303,7 +304,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>設備・機器名</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>{safeText(data.equipment?.equipment)}</Text>
+              <Text style={styles.tableText}>{data.equipment.equipment}</Text>
             </View>
           </View>
           <View style={styles.tableRow}>
@@ -311,7 +312,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>設備費</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>{safeNumber(data.equipment?.estimatedCost).toLocaleString()}円</Text>
+              <Text style={styles.tableText}>{data.equipment.estimatedCost.toLocaleString()}円</Text>
             </View>
           </View>
           <View style={styles.tableRowLast}>
@@ -319,7 +320,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>期待される効果</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>{safeText(data.equipment?.expectedEffect)}</Text>
+              <Text style={styles.tableText}>{data.equipment.expectedEffect}</Text>
             </View>
           </View>
         </View>
@@ -335,16 +336,12 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
         
         <Text style={styles.subsectionTitle}>4-1. 導入の必要性</Text>
         <View style={styles.box}>
-          <Text style={styles.longText}>
-            {safeText(data.plan?.necessity, 'AIによる分析結果に基づき、自動生成されます。')}
-          </Text>
+          <Text style={styles.longText}>{data.plan.necessity}</Text>
         </View>
 
         <Text style={styles.subsectionTitle}>4-2. 事業実施計画</Text>
         <View style={styles.box}>
-          <Text style={styles.longText}>
-            {safeText(data.plan?.businessPlan, 'AIによる分析結果に基づき、自動生成されます。')}
-          </Text>
+          <Text style={styles.longText}>{data.plan.businessPlan}</Text>
         </View>
       </View>
 
@@ -356,16 +353,12 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
       <View style={styles.section}>
         <Text style={styles.subsectionTitle}>4-3. 効果・目標</Text>
         <View style={styles.box}>
-          <Text style={styles.longText}>
-            {safeText(data.plan?.effectPlan, 'AIによる分析結果に基づき、自動生成されます。')}
-          </Text>
+          <Text style={styles.longText}>{data.plan.effectPlan}</Text>
         </View>
 
         <Text style={styles.subsectionTitle}>4-4. 持続性・発展性</Text>
         <View style={styles.box}>
-          <Text style={styles.longText}>
-            {safeText(data.plan?.sustainability, 'AIによる分析結果に基づき、自動生成されます。')}
-          </Text>
+          <Text style={styles.longText}>{data.plan.sustainability}</Text>
         </View>
       </View>
 
@@ -382,7 +375,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>設備費</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>{safeNumber(data.costs?.equipmentCost).toLocaleString()}円</Text>
+              <Text style={styles.tableText}>{data.costs.equipmentCost.toLocaleString()}円</Text>
             </View>
           </View>
           <View style={styles.tableRow}>
@@ -390,7 +383,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>総事業費</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>{safeNumber(data.costs?.totalCost).toLocaleString()}円</Text>
+              <Text style={styles.tableText}>{data.costs.totalCost.toLocaleString()}円</Text>
             </View>
           </View>
           <View style={styles.tableRow}>
@@ -398,7 +391,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>申請助成額</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>{safeNumber(data.costs?.subsidyAmount).toLocaleString()}円</Text>
+              <Text style={styles.tableText}>{data.costs.subsidyAmount.toLocaleString()}円</Text>
             </View>
           </View>
           <View style={styles.tableRow}>
@@ -406,7 +399,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>自己負担額</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>{(safeNumber(data.costs?.totalCost) - safeNumber(data.costs?.subsidyAmount)).toLocaleString()}円</Text>
+              <Text style={styles.tableText}>{(data.costs.totalCost - data.costs.subsidyAmount).toLocaleString()}円</Text>
             </View>
           </View>
           <View style={styles.tableRowLast}>
@@ -414,11 +407,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
               <Text style={styles.tableText}>助成率</Text>
             </View>
             <View style={styles.tableColValue}>
-              <Text style={styles.tableText}>
-                {safeNumber(data.costs?.totalCost) > 0 
-                  ? Math.round((safeNumber(data.costs?.subsidyAmount) / safeNumber(data.costs?.totalCost)) * 100)
-                  : 0}%
-              </Text>
+              <Text style={styles.tableText}>{Math.round((data.costs.subsidyAmount / data.costs.totalCost) * 100)}%</Text>
             </View>
           </View>
         </View>
@@ -448,7 +437,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
                   <Text style={styles.tableText}>事業者名</Text>
                 </View>
                 <View style={styles.tableColValue}>
-                  <Text style={styles.tableText}>{safeText(data.basicInfo?.companyName)}</Text>
+                  <Text style={styles.tableText}>{data.basicInfo.companyName}</Text>
                 </View>
               </View>
               <View style={styles.tableRowLast}>
@@ -456,7 +445,7 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
                   <Text style={styles.tableText}>代表者名</Text>
                 </View>
                 <View style={styles.tableColValue}>
-                  <Text style={styles.tableText}>{safeText(data.basicInfo?.representative)} 印</Text>
+                  <Text style={styles.tableText}>{data.basicInfo.representative} 印</Text>
                 </View>
               </View>
             </View>
@@ -472,12 +461,12 @@ const BusinessImprovementPDFDocument: React.FC<{ data: BusinessImprovementApplic
   </Document>
 );
 
-// PDFダウンロードボタンコンポーネント（改良版）
-export const ImprovedBusinessImprovementPDFDownloadButton: React.FC<{
+// PDFダウンロードボタンコンポーネント
+export const BusinessImprovementPDFDownloadButton: React.FC<{
   data: BusinessImprovementApplicationData;
   className?: string;
 }> = ({ data, className }) => {
-  const fileName = `業務改善助成金申請書_${safeText(data.basicInfo?.companyName, '申請書')}_${new Date().toISOString().split('T')[0]}.pdf`;
+  const fileName = `業務改善助成金申請書_${data.basicInfo.companyName}_${new Date().toISOString().split('T')[0]}.pdf`;
 
   return (
     <PDFDownloadLink
@@ -485,32 +474,24 @@ export const ImprovedBusinessImprovementPDFDownloadButton: React.FC<{
       fileName={fileName}
       className={className}
     >
-      {({ blob, url, loading, error }) => {
-        if (error) {
-          return (
-            <div className="text-red-500 text-sm">
-              PDF生成エラー: {error.message}
-            </div>
-          );
-        }
-        
-        return loading ? (
-          <div className="flex items-center">
+      {({ blob, url, loading, error }) =>
+        loading ? (
+          <>
             <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
             PDFを生成中...
-          </div>
+          </>
         ) : (
-          <div className="flex items-center">
+          <>
             <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             PDF形式でダウンロード
-          </div>
-        );
-      }}
+          </>
+        )
+      }
     </PDFDownloadLink>
   );
 };
@@ -519,6 +500,3 @@ export const ImprovedBusinessImprovementPDFDownloadButton: React.FC<{
 export function generateBusinessImprovementPDFReact(data: BusinessImprovementApplicationData): React.ReactElement {
   return <BusinessImprovementPDFDocument data={data} />;
 }
-
-// 互換性のためのエイリアス
-export const BusinessImprovementPDFDownloadButton = ImprovedBusinessImprovementPDFDownloadButton;
