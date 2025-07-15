@@ -1,6 +1,10 @@
 import PDFFormFillerDemo from '@/components/business-improvement/PDFFormFillerDemo';
 import { Button } from '@/components/ui/Button';
 
+// Vercelビルド時のSSG/SSRエラーを回避
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export default function PDFDemoPage() {
   return (
     <div className="min-h-screen bg-gray-50">

@@ -1,11 +1,14 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npm run build",
+  "buildCommand": "npm run build:vercel",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "outputDirectory": ".next",
   "functions": {
     "app/api/**/*.ts": {
+      "maxDuration": 60
+    },
+    "app/pdf-demo/page.tsx": {
       "maxDuration": 60
     }
   },
@@ -14,5 +17,14 @@
       "source": "/api/(.*)",
       "destination": "/api/$1"
     }
-  ]
+  ],
+  "env": {
+    "NODE_OPTIONS": "--max-old-space-size=4096"
+  },
+  "build": {
+    "env": {
+      "NODE_OPTIONS": "--max-old-space-size=4096",
+      "NEXT_TELEMETRY_DISABLED": "1"
+    }
+  }
 }

@@ -16,22 +16,49 @@ const nextConfig = {
         net: false,
         tls: false,
         child_process: false,
+        path: false,
+        os: false,
+        crypto: false,
+        stream: false,
+        buffer: false,
       };
     }
 
     // PDF関連ライブラリをexternalに設定（サーバーサイドで実行しない）
-    config.externals = config.externals || [];
     if (isServer) {
-      config.externals.push(
+      config.externals = [...(config.externals || []), 
         'pdf-lib',
         '@react-pdf/renderer',
         'fontkit',
-        'pdfjs-dist'
-      );
+        'pdfjs-dist',
+        'canvas',
+        // その他の問題を起こす可能性のあるライブラリ
+        'jsdom',
+        'sharp',
+        '@swc/helpers'
+      ];
+    }
+
+    // Vercel環境でのビルド最適化
+    if (process.env.VERCEL) {
+      config.optimization = {
+        ...config.optimization,
+        minimize: true,
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            pdf: {
+              test: /[\\/]node_modules[\\/](pdf-lib|@react-pdf|pdfjs-dist|fontkit)[\\/]/,
+              name: 'pdf-libs',
+              priority: 10,
+            },
+          },
+        },
+      };
     }
 
     // Bundle分析 (開発時のみ)
-    if (process.env.ANALYZE === 'true') {
+    if (process.env.ANALYZE === 'true' && !process.env.VERCEL) {
       config.plugins.push(
         new (require('@next/bundle-analyzer'))({
           enabled: true,
