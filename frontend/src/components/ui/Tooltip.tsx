@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { cn } from '../../utils/cn';
+import { cn } from '@/lib/utils';
 
 export interface TooltipProps {
   content: React.ReactNode;
