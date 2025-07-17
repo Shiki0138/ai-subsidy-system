@@ -250,4 +250,4 @@ terraform apply
 
 ---
 
-**🎯 日本の中小企業のDX化と成長を、AI技術で支援します**
+**🎯 日本の中小企業のDX化と成長を、AI技術で支援します**// Trigger rebuild
