@@ -20,7 +20,9 @@ import {
   Clock,
   Zap,
   DollarSign,
-  Globe
+  Globe,
+  Settings,
+  FileSliders
 } from 'lucide-react';
 
 export default function HomePage() {
@@ -41,7 +43,7 @@ export default function HomePage() {
       features: ['販路開拓', '業務効率化', '生産性向上'],
       applicationPeriod: '第17次締切：2025年2月28日',
       difficulty: 'normal',
-      href: '/apply/sustainability',
+      href: '/apply/simple?subsidy=jizokuka',
       available: true
     },
     {
@@ -58,7 +60,7 @@ export default function HomePage() {
       features: ['賃金引上げ', '設備投資', '生産性向上'],
       applicationPeriod: '締切：2025年12月26日',
       difficulty: 'easy',
-      href: '/apply/business-improvement',
+      href: '/apply/simple?subsidy=gyomukaizen',
       available: true
     },
     {
@@ -75,7 +77,7 @@ export default function HomePage() {
       features: ['ITツール導入', 'デジタル化', 'セキュリティ強化'],
       applicationPeriod: '最終締切：2025年12月15日',
       difficulty: 'easy',
-      href: '/apply/it-subsidy',
+      href: '/apply/simple?subsidy=it',
       available: true
     },
     {
@@ -92,7 +94,7 @@ export default function HomePage() {
       features: ['設備投資', '新製品開発', '生産性向上'],
       applicationPeriod: '第18次締切：2025年4月30日',
       difficulty: 'hard',
-      href: '/apply/manufacturing',
+      href: '/apply/simple?subsidy=monozukuri',
       available: true
     },
     {
@@ -109,7 +111,7 @@ export default function HomePage() {
       features: ['新分野展開', '事業転換', '業態転換'],
       applicationPeriod: '第13回公募：2025年3月予定',
       difficulty: 'hard',
-      href: '/apply/reconstruction',
+      href: '/apply/simple?subsidy=saikochiku',
       available: true
     }
   ];
@@ -136,18 +138,10 @@ export default function HomePage() {
               </h1>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
-                  ダッシュボード
-                </Button>
-                <Button variant="ghost" size="sm" className="sm:hidden px-2">
-                  <Users className="h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/auth/login">
-                <Button size="sm">
-                  <span className="hidden sm:inline">ログイン</span>
-                  <span className="sm:hidden">Login</span>
+              <Link href="/admin">
+                <Button variant="outline" size="sm">
+                  <Settings className="h-4 w-4 mr-2" />
+                  管理画面
                 </Button>
               </Link>
             </div>
@@ -321,145 +315,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 法的表示セクション */}
-      <section className="py-8 px-4 bg-gray-100 border-t">
-        <div className="container mx-auto max-w-6xl">
-          <div className="bg-white rounded-lg p-6 shadow-sm">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Shield className="h-5 w-5 text-blue-600" />
-              重要なお知らせ
-            </h3>
-            <div className="space-y-3 text-sm text-gray-700">
-              <div className="flex items-start gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <p>
-                  本サービスは、補助金・助成金申請書類の作成を支援するツールです。
-                  <strong>申請代行サービスではありません。</strong>
-                </p>
-              </div>
-              <div className="flex items-start gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <p>
-                  作成した申請書類の提出は、お客様ご自身で行っていただく必要があります。
-                </p>
-              </div>
-              <div className="flex items-start gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <p>
-                  本サービスは日本国内の事業者向けサービスです。海外からのご利用はできません。
-                </p>
-              </div>
-              <div className="flex items-start gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <p>
-                  補助金の採択を保証するものではありません。詳細は
-                  <Link href="/disclaimer" className="text-blue-600 hover:underline mx-1">
-                    免責事項
-                  </Link>
-                  をご確認ください。
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* フッター */}
+      {/* シンプルなフッター */}
       <footer className="border-t bg-gray-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            {/* 会社情報 */}
-            <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <Sparkles className="h-6 w-6 text-blue-600" />
-                <span className="font-semibold">AI補助金申請システム</span>
-              </div>
-              <p className="text-sm text-gray-600">
-                補助金申請書類作成支援ツール
-              </p>
-            </div>
-            
-            {/* 法的情報 */}
-            <div>
-              <h4 className="font-semibold mb-3">法的情報</h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="/terms" className="text-gray-600 hover:text-gray-900">
-                    利用規約
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/privacy" className="text-gray-600 hover:text-gray-900">
-                    プライバシーポリシー
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/specified-commercial-transaction" className="text-gray-600 hover:text-gray-900">
-                    特定商取引法に基づく表記
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/disclaimer" className="text-gray-600 hover:text-gray-900">
-                    免責事項
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            
-            {/* サポート */}
-            <div>
-              <h4 className="font-semibold mb-3">サポート</h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="/help" className="text-gray-600 hover:text-gray-900">
-                    ヘルプセンター
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/faq" className="text-gray-600 hover:text-gray-900">
-                    よくある質問
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/contact" className="text-gray-600 hover:text-gray-900">
-                    お問い合わせ
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            
-            {/* サービス */}
-            <div>
-              <h4 className="font-semibold mb-3">サービス</h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="/pricing" className="text-gray-600 hover:text-gray-900">
-                    料金プラン
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/features" className="text-gray-600 hover:text-gray-900">
-                    機能紹介
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/dashboard" className="text-gray-600 hover:text-gray-900">
-                    ダッシュボード
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="border-t pt-6">
-            <div className="flex flex-col md:flex-row items-center justify-between">
-              <p className="text-sm text-gray-600">
-                © 2024 AI補助金申請システム. All rights reserved.
-              </p>
-              <p className="text-sm text-gray-600 mt-2 md:mt-0">
-                日本国内サービス | 申請書作成支援ツール
-              </p>
-            </div>
+        <div className="container mx-auto px-4 py-6">
+          <div className="text-center">
+            <p className="text-sm text-gray-600">
+              © 2024 AI補助金申請システム - 内部利用専用
+            </p>
           </div>
         </div>
       </footer>

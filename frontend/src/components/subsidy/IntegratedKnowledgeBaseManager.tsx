@@ -57,7 +57,7 @@ const SUBSIDY_TYPES = [
   }
 ]
 
-export function IntegratedKnowledgeBaseManager() {
+export default function IntegratedKnowledgeBaseManager() {
   const [knowledgeBases, setKnowledgeBases] = useState<Record<string, SubsidyKnowledgeBase>>({})
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
   const [isUploading, setIsUploading] = useState(false)

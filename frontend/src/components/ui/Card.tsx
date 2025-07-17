@@ -66,4 +66,10 @@ const CardContent = ({ className, children, ...props }: CardBodyProps) => (
   </div>
 )
 
-export { Card, CardHeader, CardBody, CardFooter, CardTitle, CardContent }
+const CardDescription = ({ className, children, ...props }: CardHeaderProps) => (
+  <p className={cn('text-sm text-muted-foreground', className)} {...props}>
+    {children}
+  </p>
+)
+
+export { Card, CardHeader, CardBody, CardFooter, CardTitle, CardContent, CardDescription }

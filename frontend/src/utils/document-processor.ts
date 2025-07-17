@@ -1,12 +1,22 @@
 // 申請書・募集要項ドキュメント処理ユーティリティ
 
 import mammoth from 'mammoth'
-import * as pdfjsLib from 'pdfjs-dist'
-import { createReport } from 'docx-templates'
 
-// PDF.jsのworkerを設定
-if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+// PDF.jsは動的インポートで使用（SSRエラー回避）
+let pdfjsLib: any = null;
+
+// PDF.jsの動的初期化
+async function initializePDFJS() {
+  if (typeof window === 'undefined') {
+    throw new Error('PDF処理はクライアントサイドでのみ実行可能です');
+  }
+  
+  if (!pdfjsLib) {
+    pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+  }
+  
+  return pdfjsLib;
 }
 
 // 募集要項の要件を構造化
