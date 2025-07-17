@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/Progress';
-import { Alert, AlertDescription } from '@/components/ui/Alert';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Sparkles, 
   Download, 
@@ -25,7 +25,7 @@ import {
 import { BusinessImprovementAI, CompanyProfile } from '@/services/business-improvement-ai';
 import { generateBusinessImprovementWord } from '@/utils/business-improvement-pdf';
 import SafePDFButton from '@/components/ui/SafePDFButton';
-import { Tooltip } from '@/components/ui/Tooltip';
+import { Tooltip } from '@/components/ui/tooltip';
 
 interface BasicInfo {
   companyName: string;

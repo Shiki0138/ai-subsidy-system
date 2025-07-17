@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Save, Check, AlertCircle } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { Button } from '@/components/ui/button'
 
 interface AutoSaveIndicatorProps {
   lastSaveTime: Date | null

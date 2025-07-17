@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Sparkles, Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { Button } from '@/components/ui/button'
 import { showError, showSuccess } from '@/utils/error-handler'
 import { GeminiService } from '@/services/ai/geminiService'
 

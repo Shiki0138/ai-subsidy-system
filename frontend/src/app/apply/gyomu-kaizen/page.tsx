@@ -4,10 +4,10 @@ import React, { useState } from 'react';
 import { GuidelineBasedForm } from '@/components/subsidy/GuidelineBasedForm';
 import QuickApplicationFlow from '@/components/subsidy/QuickApplicationFlow';
 import SuccessPatternDisplay from '@/components/subsidy/SuccessPatternDisplay';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, AlertCircle, Zap, Lightbulb, FileSearch } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/Alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function GyomuKaizenPage() {
   const [activeTab, setActiveTab] = useState('quick');
